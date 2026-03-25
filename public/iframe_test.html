@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <iframe 
+        id="ep-iframe-1"
+        name="ep-iframe"
+        src="http://localhost:8788/2kftdqNYyiaqAEyhXboNZF?autosize-iframe-id=ep-iframe-1"
+        width="100%"
+        height="400"
+    >
+    </iframe>
+    <script>
+        const iframeElement = document.getElementById("child-iframe");
+        window.addEventListener('message', event => {
+            if (event.origin.startsWith('http://localhost:8788')) {
+                let iframeElement;
+                let newHeight;
+                if (event.data.hasOwnProperty("iframeId")) {
+                    iframeElement = document.getElementById(event.data.iframeId);
+                    newHeight = event.data.height;
+                } else {
+                    iframeElement = document.getElementById("ep-iframe-1");
+                    newHeight = event.data;
+                }
+                if (iframeElement) {
+                    iframeElement.style.height = newHeight;
+                }
+            }
+        }); 
+    </script>
+</body>
+
+</html>

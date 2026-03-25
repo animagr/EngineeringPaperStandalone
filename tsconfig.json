@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "target": "esnext",
+    "strict": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "types": ["@types/wicg-file-system-access"],
+    "lib": [
+      "esnext",
+      "dom"
+    ]
+  },
+  "extends": "./node_modules/@tsconfig/svelte/tsconfig.json",
+  "include": ["src/**/*"],
+  "exclude": ["node_modules/*", "src/database/_worker.ts"]
+}
