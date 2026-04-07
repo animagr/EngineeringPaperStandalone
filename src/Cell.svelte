@@ -217,6 +217,42 @@
     }
   }
 
+  .annotation-column {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .annotation-column.has-annotation,
+  .annotation-column.selected {
+    width: 150px;
+    padding-left: 8px;
+  }
+
+  .annotation-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid lightgray;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.85em;
+    font-family: inherit;
+  }
+
+  @media (max-width: 500px) {
+    .annotation-column {
+      display: none;
+    }
+  }
+
+  @media print {
+    .annotation-input {
+      border: none;
+      background: none;
+    }
+  }
+
 </style>
 
 <div class="container">
@@ -375,6 +411,20 @@
       />
     {/if}
   </div>
+
+  {#if cell instanceof MathCell}
+    <div class="annotation-column" class:has-annotation={cell.annotation} class:selected>
+      {#if selected || cell.annotation}
+        <input
+          type="text"
+          class="annotation-input"
+          placeholder="units/notes"
+          value={cell.annotation}
+          oninput={(e) => { cell.annotation = e.currentTarget.value; triggerSaveNeeded(); }}
+        />
+      {/if}
+    </div>
+  {/if}
 
   <div class="controls right">
     <IconButton

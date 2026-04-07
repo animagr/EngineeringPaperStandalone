@@ -13,7 +13,8 @@ export type DatabaseMathCell = {
   type: "math",
   id: number,
   latex: string,
-  config: MathCellConfig | null | undefined  // config might be undefined for old database entries
+  config: MathCellConfig | null | undefined,  // config might be undefined for old database entries
+  annotation?: string
 };
 
 export type DatabasePlotCell = {

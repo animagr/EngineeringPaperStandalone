@@ -60,6 +60,8 @@
   let renderElementHTML: HTMLElement = $state();
 
   export function getMarkdown(centerEquations: boolean) {
+    let md: string;
+
     if (!renderResult) {
       const queryStatement = Boolean(mathCell.mathField?.statement?.type === "query");
       let errorMessage = "";
@@ -73,26 +75,34 @@
       const result = queryStatement ? `${resultLatex} ${resultUnitsLatex}` : "";
 
       if (centerEquations) {
-        return `$$ ${mathCell.mathField.latex} ${result} ${errorMessage} $$\n\n`;
+        md = `$$ ${mathCell.mathField.latex} ${result} ${errorMessage} $$\n\n`;
       } else {
         const latex = `${mathCell.mathField.latex} ${result} ${errorMessage}`.trim();
         if (latex) {
-          return `$${latex}$ <!-- inline -->\n\n`;
+          md = `$${latex}$ <!-- inline -->\n\n`;
         } else {
-          return "";
+          md = "";
         }
       }
     } else if (result && isRenderResult(result)) {
       if (result.type === "html") {
-        return `${renderResultValue}\n\n`;
+        md = `${renderResultValue}\n\n`;
       } else if (result.type === "markdown") {
-        return `${result.value}\n\n`;
+        md = `${result.value}\n\n`;
       } else {
-        return `\`\`\`\n${result.value}\n\`\`\`\n\n`;
+        md = `\`\`\`\n${result.value}\n\`\`\`\n\n`;
       }
     } else {
-      return `$${mathCell.mathField.latex.trim()} \\text{Render result not available at time of export}$\n\n`;
+      md = `$${mathCell.mathField.latex.trim()} \\text{Render result not available at time of export}$\n\n`;
     }
+
+    if (mathCell.annotation && md) {
+      const trimmed = md.trimEnd();
+      // Two-column pipe table keeps equation and annotation on the same line in DOCX
+      md = `| | |\n|:---|---:|\n| ${trimmed} | *${mathCell.annotation}* |\n\n`;
+    }
+
+    return md;
   }
 
   export function setNumberConfig(mathCellConfig: MathCellConfig) {

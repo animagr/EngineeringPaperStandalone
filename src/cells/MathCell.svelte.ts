@@ -5,6 +5,7 @@ import { MathField } from "./MathField.svelte";
 export default class MathCell extends BaseCell {
   mathField: MathField = $state();
   config: MathCellConfig | null = $state();
+  annotation: string = $state("");
 
   constructor (arg?: DatabaseMathCell) {
     super("math", arg?.id);
@@ -12,7 +13,7 @@ export default class MathCell extends BaseCell {
       this.mathField = new MathField("");
       this.config = null;
     } else {
-      
+      this.annotation = arg.annotation ?? "";
       this.mathField = new MathField(arg.latex);
       if (arg.config) {
         this.config = arg.config;
@@ -26,12 +27,16 @@ export default class MathCell extends BaseCell {
   } 
 
   serialize(): DatabaseMathCell {
-    return {
+    const result: DatabaseMathCell = {
       type: "math",
       id: this.id,
       latex: this.mathField.latex,
       config: this.config
     };
+    if (this.annotation) {
+      result.annotation = this.annotation;
+    }
+    return result;
   }
 
   get parsePending() {

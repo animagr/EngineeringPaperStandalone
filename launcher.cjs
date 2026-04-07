@@ -80,7 +80,10 @@ function serve(req, res) {
   const stream = fs.createReadStream(filePath);
   stream.on('open', () => {
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-store',
+    });
     stream.pipe(res);
   });
   stream.on('error', () => {

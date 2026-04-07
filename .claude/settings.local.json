@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(ls -la \"c:/Claude/EngPaper/EngineeringPaper.xyz-20260313/EngineeringPaperStandalone/public/build/main-\"* \"c:/Claude/EngPaper/EngineeringPaper.xyz-20260313/EngineeringPaperStandalone/public/build/bundle.css\")",
+      "Bash(ls \"c:/Claude/EngPaper/EngineeringPaper.xyz-20260313/EngineeringPaperStandalone/public/build/main\"*)"
+    ]
+  }
+}

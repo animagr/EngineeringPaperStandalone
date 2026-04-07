@@ -85,6 +85,42 @@ The server starts at `http://localhost:8788` and your default browser opens auto
 
 **`package.json` additions:** `package:win` script; `@yao-pkg/pkg` devDependency; `pkg.assets` config block pointing to `public/**/*`.
 
+### Troubleshooting: port 8788 already in use
+
+If the exe opens the browser but shows an old version, a previous server process may still be running on port 8788. The exe detects the port is taken and opens the browser to the existing (stale) server instead of starting a new one.
+
+To fix, kill the old process first:
+
+```bash
+netstat -ano | findstr :8788
+taskkill /PID <pid> /F
+```
+
+Then relaunch the exe.
+
+---
+
+## Annotation Column for Math Cells
+
+Math cells have an optional annotation column to the right where you can add units descriptions, notes, or labels (e.g., "velocity", "kg/m^3"). This improves readability of engineering sheets.
+
+- Click a math cell to reveal the annotation input to its right
+- Type a note — it saves automatically and persists with the sheet
+- Annotations are included in Markdown/DOCX export as `*[annotation]*`
+- Hidden on narrow screens (< 500px) and rendered as plain text when printing
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/cells/BaseCell.ts` | Added optional `annotation` field to `DatabaseMathCell` type |
+| `src/cells/MathCell.svelte.ts` | Added `annotation` reactive state, deserialization, and conditional serialization |
+| `src/Cell.svelte` | Added annotation column div with text input and expand/collapse CSS |
+| `src/MathCell.svelte` | Updated `getMarkdown()` to append annotation when present |
+| `launcher.cjs` | Added `Cache-Control: no-store` header to prevent stale file serving |
+
+Backwards compatible — old sheets without annotations load without error. Annotations are only serialized when non-empty.
+
 ---
 
 ## What Is Disabled in Standalone Mode
