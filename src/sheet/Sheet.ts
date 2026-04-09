@@ -1,15 +1,15 @@
 import type { NumberFormat } from "xlsx";
 import type { DatabaseCell } from "../cells/BaseCell"
-import type { Result, FiniteImagResult, PlotResult, 
-              MatrixResult, SystemResult, DataTableResult, 
-              CodeCellResult, RenderResult} from "../resultTypes";
+import type { Result, FiniteImagResult, PlotResult,
+              MatrixResult, SystemResult, DataTableResult,
+              CodeCellResult, RenderResult, ExtremeValueResult} from "../resultTypes";
 
 export type Sheet = {
   version?: number; // early sheets did not have a version property
   config?: Config; // early sheets did not have a config property
   cells: DatabaseCell[];
   title: string;
-  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[])[];
+  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult)[];
   system_results: (SystemResult)[];
   codeCellResults?: Record<string, CodeCellResult>; // early sheets did not have this property
   sub_results?: [string, Result | FiniteImagResult | MatrixResult][]; // early sheets did not have this property

@@ -124,9 +124,21 @@ export type RenderResult = {
   dimensionError: string
 }
 
+export type ExtremeValueResult = {
+  extremeValueResult: true;
+  nominalResult: Result | FiniteImagResult;
+  minResult: Result | FiniteImagResult;
+  maxResult: Result | FiniteImagResult;
+  error?: string;
+};
+
+export function isExtremeValueResult(result: Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult): result is ExtremeValueResult {
+  return "extremeValueResult" in result && result.extremeValueResult;
+}
+
 export type Results = {
   error: null | string;
-  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[])[];
+  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult)[];
   systemResults: SystemResult[];
   codeCellResults: Record<string, CodeCellResult>;
 };

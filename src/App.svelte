@@ -11,6 +11,7 @@
   import SystemCell from "./cells/SystemCell.svelte";
   import FluidCell from "./cells/FluidCell.svelte";
   import CodeCell from "./cells/CodeCell.svelte";
+  import ExtremeValueCell from "./cells/ExtremeValueCell.svelte";
   import appState from "./stores.svelte";
   import { deleteCell, addCell, incrementActiveCell, decrementActiveCell,
            resetSheet, getSheetJson, getSheetObject, clearResults } from "./stores.svelte";
@@ -20,7 +21,7 @@
   import type { FluidFunction } from "./cells/FluidCell.svelte";
   import type { CodeCellFunction } from "./cells/CodeCell.svelte";
   import { isVisible, versionToDateString, debounce, saveFileBlob, sleep, createCustomUnits } from "./utility";
-  import type { ModalInfo, RecentSheets, RecentSheetUrl, RecentSheetFile, StatementsAndSystems } from "./types";
+  import type { ModalInfo, RecentSheets, RecentSheetUrl, RecentSheetFile, StatementsAndSystems, ExtremeValueDefinition } from "./types";
   import type { Results } from "./resultTypes";
   import { getHash, API_GET_PATH, API_SAVE_PATH } from "./database/utility";
   import type { SheetPostBody, History } from "./database/types";
@@ -859,6 +860,8 @@
     const fluidFunctions: FluidFunction[] = [];
     const codeCellFunctions: CodeCellFunction[] = [];
     const interpolationFunctions: (InterpolationFunction | GridInterpolationFunction)[] = [];
+    const extremeValueDefinitions: ExtremeValueDefinition[] = [];
+    let queryCounter = 0;
 
     for (const [cellNum, cell] of appState.cells.entries()) {
       if (cell instanceof MathCell) {
@@ -946,6 +949,39 @@
             endStatements.push(statement);
           }
         }
+      } else if (cell instanceof ExtremeValueCell) {
+        if (cell.queryField.statement && cell.queryField.statement.type === "query") {
+          statements.push(cell.queryField.statement);
+
+          // Build EVA definition with parameter names and min/max implicit params
+          const evaParams = [];
+          for (let i = 0; i < cell.parameterFields.length; i++) {
+            const paramStatement = cell.parameterFields[i].statement;
+            const minCombined = cell.combinedMinFields[i];
+            const maxCombined = cell.combinedMaxFields[i];
+            if (paramStatement && paramStatement.type === "parameter" &&
+                minCombined.statement && minCombined.statement.type === "assignment" &&
+                maxCombined.statement && maxCombined.statement.type === "assignment") {
+              evaParams.push({
+                name: paramStatement.name,
+                minSympy: minCombined.statement.sympy,
+                minImplicitParams: minCombined.statement.implicitParams,
+                maxSympy: maxCombined.statement.sympy,
+                maxImplicitParams: maxCombined.statement.implicitParams,
+              });
+            }
+          }
+          if (evaParams.length > 0) {
+            // queryIndex = current length of statements - 1 (we just pushed)
+            extremeValueDefinitions.push({
+              parameters: evaParams,
+              queryIndex: statements.length - 1,
+            });
+          }
+        } else {
+          // need a placeholder so result distribution counter stays aligned
+          statements.push(getBlankStatement());
+        }
       }
     }
 
@@ -963,7 +999,8 @@
       interpolationFunctions: interpolationFunctions,
       customBaseUnits: appState.config.customBaseUnits,
       simplifySymbolicExpressions: appState.config.simplifySymbolicExpressions,
-      convertFloatsToFractions: appState.config.convertFloatsToFractions
+      convertFloatsToFractions: appState.config.convertFloatsToFractions,
+      extremeValueDefinitions: extremeValueDefinitions.length > 0 ? extremeValueDefinitions : undefined
     };
   }
 
@@ -994,6 +1031,11 @@
     } else if (cell instanceof DataTableCell) {
       return accum || cell.parameterFields.some(value => value.parsingError) ||
                      cell.parameterUnitFields.some(value => value.parsingError);
+    } else if (cell instanceof ExtremeValueCell) {
+      return accum || cell.queryField.parsingError ||
+                     cell.parameterFields.some(value => value.parsingError) ||
+                     cell.minFields.some(value => value.parsingError) ||
+                     cell.maxFields.some(value => value.parsingError);
     } else {
       return accum || false;
     }
@@ -1050,7 +1092,7 @@
         if (!data.error && data.results.length > 0) {
           let counter = 0;
           for (const [i, cell] of appState.cells.entries()) {
-            if ((cell.type === "math" || cell.type === "plot" || cell.type === "dataTable") ) {
+            if ((cell.type === "math" || cell.type === "plot" || cell.type === "dataTable" || cell.type === "extremeValue") ) {
               appState.results[i] = data.results[counter++];
             } else {
               appState.results[i] = null;

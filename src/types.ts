@@ -2,7 +2,7 @@ import type MathCell from "./cells/MathCell.svelte";
 import type { SystemDefinition } from "./cells/SystemCell.svelte";
 import type { FluidFunction } from "./cells/FluidCell.svelte";
 import type { CodeCellFunction } from "./cells/CodeCell.svelte";
-import type { Statement, SubQueryStatement } from "./parser/types";
+import type { Statement, SubQueryStatement, ImplicitParameter } from "./parser/types";
 import type { MathField } from "./cells/MathField.svelte";
 import type { CustomBaseUnits, MathCellConfig } from "./sheet/Sheet";
 import type { InterpolationFunction, GridInterpolationFunction } from "./cells/DataTableCell.svelte";
@@ -42,6 +42,19 @@ export type RecentSheetFile = {
 
 export type RecentSheets = Map<string, RecentSheetUrl | RecentSheetFile>;
 
+export type ExtremeValueParameter = {
+  name: string;
+  minSympy: string;
+  minImplicitParams: ImplicitParameter[];
+  maxSympy: string;
+  maxImplicitParams: ImplicitParameter[];
+};
+
+export type ExtremeValueDefinition = {
+  parameters: ExtremeValueParameter[];
+  queryIndex: number;
+};
+
 export type StatementsAndSystems = {
   statements: (Statement | SubQueryStatement)[];
   systemDefinitions: SystemDefinition[];
@@ -51,6 +64,7 @@ export type StatementsAndSystems = {
   customBaseUnits?: CustomBaseUnits;
   simplifySymbolicExpressions: boolean;
   convertFloatsToFractions: boolean;
+  extremeValueDefinitions?: ExtremeValueDefinition[];
 }
 
 

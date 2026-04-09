@@ -12,6 +12,7 @@
   import RainDrop from "carbon-icons-svelte/lib/RainDrop.svelte";
   import IconButton from './IconButton.svelte';
   import DataTable from "carbon-icons-svelte/lib/DataTable.svelte";
+  import Analytics from "carbon-icons-svelte/lib/Analytics.svelte";
   import type { CellTypes } from "./cells/BaseCell";
 
   interface Props {
@@ -198,7 +199,16 @@
       <RainDrop />
     </IconButton>
 
-    <IconButton 
+    <IconButton
+      title="Insert Extreme Value Analysis Cell Here"
+      click={() => addCellWrapper('extremeValue', index)}
+      id={last ? "add-eva-cell" : `add-eva-cell-${index}`}
+      noTouch={!last}
+    >
+      <Analytics />
+    </IconButton>
+
+    <IconButton
       title="Insert Sheet Here"
       click={() => dispatchInsertSheet(index)}
       id={last ? "insert-sheet" : null}

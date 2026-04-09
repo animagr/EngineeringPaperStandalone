@@ -27,6 +27,8 @@
   import InsertCell from "./cells/InsertCell";
   import FluidCell from "./cells/FluidCell.svelte";
   import CodeCell from "./cells/CodeCell.svelte";
+  import ExtremeValueCell from "./cells/ExtremeValueCell.svelte";
+  import ExtremeValueCellElement from "./ExtremeValueCell.svelte";
 
   import TrashCan from "carbon-icons-svelte/lib/TrashCan.svelte";
   import ChevronUp from "carbon-icons-svelte/lib/ChevronUp.svelte";
@@ -391,6 +393,16 @@
         bind:this={cellElement}
         index={index}
         codeCell={cell}
+      />
+    {:else if cell instanceof ExtremeValueCell}
+      <ExtremeValueCellElement
+        {insertMathCellAfter}
+        {insertInsertCellAfter}
+        {mathCellChanged}
+        {triggerSaveNeeded}
+        bind:this={cellElement}
+        index={index}
+        extremeValueCell={cell}
       />
     {:else if cell instanceof DeletedCell}
       <DeletedCellElement

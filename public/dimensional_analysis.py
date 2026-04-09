@@ -11,6 +11,7 @@ sys.setrecursionlimit(1000)
 import io
 
 from functools import lru_cache, partial, reduce
+from itertools import product as itertools_product
 import traceback
 
 import collections
@@ -526,6 +527,17 @@ Statement = InputStatement | UserFunction | UserFunctionRange | FunctionUnitsQue
 SystemDefinition = ExactSystemDefinition | NumericalSystemDefinition
 
 
+class ExtremeValueParameter(TypedDict):
+    name: str
+    minSympy: str
+    minImplicitParams: list[ImplicitParameter]
+    maxSympy: str
+    maxImplicitParams: list[ImplicitParameter]
+
+class ExtremeValueDefinition(TypedDict):
+    parameters: list[ExtremeValueParameter]
+    queryIndex: int
+
 class StatementsAndSystems(TypedDict):
     statements: list[InputStatement]
     systemDefinitions: list[SystemDefinition]
@@ -535,6 +547,7 @@ class StatementsAndSystems(TypedDict):
     customBaseUnits: NotRequired[CustomBaseUnits]
     simplifySymbolicExpressions: bool
     convertFloatsToFractions: bool
+    extremeValueDefinitions: NotRequired[list[ExtremeValueDefinition]]
 
 def is_code_function_query_statement(statement: InputAndSystemStatement) -> TypeGuard[CodeFunctionQueryStatement]:
     return statement.get("isCodeFunctionQuery", False)
@@ -649,9 +662,16 @@ def is_matrix_result(result: Result | FiniteImagResult | MatrixResult | PlotResu
 def is_matrix(expression: Expr | Matrix) -> TypeGuard[Matrix]:
     return isinstance(expression, MatrixBase)
 
+class ExtremeValueResult(TypedDict):
+    extremeValueResult: Literal[True]
+    nominalResult: Result | FiniteImagResult
+    minResult: Result | FiniteImagResult
+    maxResult: Result | FiniteImagResult
+    error: NotRequired[str]
+
 class Results(TypedDict):
     error: None | str
-    results: list[Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | list[PlotResult]]
+    results: list[Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | list[PlotResult] | ExtremeValueResult]
     systemResults: list[SystemResult]
     codeCellResults: dict[str, CodeCellResult]
 
@@ -3634,7 +3654,8 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
                         placeholder_map: dict[Function, PlaceholderFunction],
                         placeholder_set: set[Function],
                         placeholder_dummy_set: set[Function],
-                        custom_definition_names: list[str]) -> tuple[list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult], dict[int,bool]]:
+                        custom_definition_names: list[str],
+                        extreme_value_definitions: list[ExtremeValueDefinition] | None = None) -> tuple[list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult], dict[int,bool]]:
     num_statements = len(statements)
 
     if num_statements == 0:
@@ -3929,6 +3950,194 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
 
         result["generatedCode"] = generatedCode
 
+    # Extreme Value Analysis post-processing
+    if extreme_value_definitions:
+        for ev_def in extreme_value_definitions:
+            query_index = ev_def["queryIndex"]
+            ev_params = ev_def["parameters"]
+
+            if len(ev_params) == 0:
+                continue
+
+            # Collect EVA parameter names so we can skip their assignments during substitution
+            ev_param_names = set(ep["name"] for ep in ev_params)
+
+            # Rebuild the query expression from the original statement, but skip
+            # substituting EVA parameter assignments so their variable symbols remain
+            # in the expression and can be overridden with min/max values.
+            query_stmt = None
+            query_stmt_index = None
+            for si, stmt in enumerate(expanded_statements):
+                if stmt.get("index") == query_index and stmt.get("type") == "query":
+                    query_stmt = stmt
+                    query_stmt_index = si
+                    break
+
+            if query_stmt is None:
+                continue
+
+            query_expression = query_stmt["expression"]
+            for sub_stmt in reversed(expanded_statements[0:query_stmt_index]):
+                if sub_stmt["type"] == "assignment" and not sub_stmt.get("isFunction", False):
+                    sub_name = sub_stmt["name"]
+                    # Skip EVA parameters — leave their symbols in the expression
+                    if sub_name in ev_param_names:
+                        continue
+                    if sub_name in map(lambda x: str(x), query_expression.free_symbols):
+                        query_expression = subs_wrapper(query_expression, {symbols(sub_name): sub_stmt["expression"]})
+                elif sub_stmt["type"] == "local_sub":
+                    pass  # local subs only apply to functions, not relevant here
+
+            query_expression = cast(Expr, query_expression.doit())
+
+            # Save the nominal result
+            nominal_result = results_with_ranges[query_index]
+
+            # Build parameter override info: map from variable symbol to (min_value, max_value)
+            param_overrides: list[tuple[Symbol, Expr, Expr]] = []
+            ev_error = None
+
+            for ev_param in ev_params:
+                param_name = ev_param["name"]
+
+                # Verify the parameter exists as an assignment on the sheet
+                found = False
+                for stmt in expanded_statements:
+                    if stmt.get("type") == "assignment" and stmt.get("name") == param_name:
+                        found = True
+                        break
+
+                if not found:
+                    ev_error = f"Parameter '{param_name}' not found as an assignment on the sheet"
+                    break
+
+                # The override symbol is the variable name itself (e.g. R_as_variable)
+                override_symbol = symbols(param_name)
+
+                # Get min/max SI values from the EVA definition's implicit params
+                # For values with units, implicitParams carries the SI-converted value.
+                # For unitless numbers, implicitParams is empty and minSympy/maxSympy
+                # is the numeric string itself. Build a substitution map and sympify.
+                try:
+                    min_ip_subs = {}
+                    for ip in ev_param["minImplicitParams"]:
+                        if ip["si_value"] is not None:
+                            min_ip_subs[symbols(ip["name"])] = sympify(ip["si_value"], rational=convert_floats_to_fractions)
+
+                    max_ip_subs = {}
+                    for ip in ev_param["maxImplicitParams"]:
+                        if ip["si_value"] is not None:
+                            max_ip_subs[symbols(ip["name"])] = sympify(ip["si_value"], rational=convert_floats_to_fractions)
+
+                    min_si = sympify(ev_param["minSympy"], rational=convert_floats_to_fractions).subs(min_ip_subs)
+                    max_si = sympify(ev_param["maxSympy"], rational=convert_floats_to_fractions).subs(max_ip_subs)
+
+                    if min_si.free_symbols or max_si.free_symbols:
+                        ev_error = f"Could not resolve min/max values for parameter '{param_name}'"
+                        break
+
+                    param_overrides.append((override_symbol, min_si, max_si))
+                except Exception as e:
+                    ev_error = f"Error processing parameter '{param_name}': {e}"
+                    break
+
+            if ev_error:
+                results_with_ranges[query_index] = ExtremeValueResult(
+                    extremeValueResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                    minResult=cast(Result | FiniteImagResult, nominal_result),
+                    maxResult=cast(Result | FiniteImagResult, nominal_result),
+                    error=ev_error
+                )
+                continue
+
+            # Evaluate all 2^n combinations
+            # Build dimensional_analysis_subs that includes EVA parameter symbols.
+            # These symbols were kept in the expression (not substituted out), so
+            # replace_placeholder_funcs needs dim entries for them. Use the dimension
+            # from the original assignment's implicit params, or dimensionless (1) for unitless.
+            ev_dim_subs = dict(dimensional_analysis_subs)
+            for override_sym, _, _ in param_overrides:
+                if override_sym not in ev_dim_subs:
+                    # Find the assignment's expression dimensions from expanded_statements
+                    param_name_str = str(override_sym)
+                    dim_expr = S(1)  # default: dimensionless
+                    for stmt in expanded_statements:
+                        if stmt.get("type") == "assignment" and stmt.get("name") == param_name_str:
+                            # If the assignment has a dim_expression, use it
+                            if "dim_expression" in stmt and stmt["dim_expression"] is not None:
+                                dim_expr = stmt["dim_expression"]
+                            break
+                    ev_dim_subs[override_sym] = dim_expr
+
+            n = len(param_overrides)
+            best_min_val = float('inf')
+            best_max_val = float('-inf')
+            min_result = None
+            max_result = None
+
+            for combo in itertools_product([False, True], repeat=n):
+                trial_subs = dict(parameter_subs)
+                # Override EVA parameter variable symbols with min/max values
+                for use_max, (sym, min_val, max_val) in zip(combo, param_overrides):
+                    trial_subs[sym] = max_val if use_max else min_val
+
+                try:
+                    eval_result, sym_result, dim_result, dim_sub_error = get_evaluated_expression(
+                        query_expression,
+                        not convert_floats_to_fractions,
+                        trial_subs,
+                        ev_dim_subs,
+                        placeholder_map,
+                        placeholder_set,
+                        {},  # fresh expression_cache for each combo
+                        variable_name_map
+                    )
+
+                    if is_matrix(eval_result):
+                        continue  # skip matrix results for EVA
+
+                    trial_result = get_result(
+                        eval_result, dim_result,
+                        simplify_symbolic_expressions,
+                        dim_sub_error, cast(Expr, sym_result),
+                        False,  # isRange
+                        custom_base_units,
+                        False,  # isSubQuery
+                        "",     # subQueryName
+                        variable_name_map
+                    )
+
+                    if trial_result.get("numeric", False) and trial_result.get("finite", False):
+                        try:
+                            val = float(trial_result["value"])
+                            if val < best_min_val:
+                                best_min_val = val
+                                min_result = trial_result
+                            if val > best_max_val:
+                                best_max_val = val
+                                max_result = trial_result
+                        except (ValueError, TypeError):
+                            pass
+                except Exception:
+                    continue
+
+            if min_result is not None and max_result is not None:
+                results_with_ranges[query_index] = ExtremeValueResult(
+                    extremeValueResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                    minResult=cast(Result | FiniteImagResult, min_result),
+                    maxResult=cast(Result | FiniteImagResult, max_result)
+                )
+            else:
+                results_with_ranges[query_index] = ExtremeValueResult(
+                    extremeValueResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                    minResult=cast(Result | FiniteImagResult, nominal_result),
+                    maxResult=cast(Result | FiniteImagResult, nominal_result),
+                    error="Could not determine numeric min/max from parameter combinations"
+                )
+
     return combine_plot_and_table_data_results(results_with_ranges[:num_statements], statement_plot_info, statement_data_table_info), numerical_system_cell_unit_errors
 
 
@@ -3939,10 +4148,11 @@ def get_query_values(statements: list[InputAndSystemStatement],
                      placeholder_map: dict[Function, PlaceholderFunction],
                      placeholder_set: set[Function],
                      placeholder_dummy_set: set[Function],
-                     custom_definition_names: list[str]):
+                     custom_definition_names: list[str],
+                     extreme_value_definitions: list[ExtremeValueDefinition] | None = None):
     error: None | str = None
 
-    results: list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult] = []
+    results: list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult] = []
     numerical_system_cell_errors: dict[int, bool] = {}
     try:
         results, numerical_system_cell_errors = evaluate_statements(statements,
@@ -3952,7 +4162,8 @@ def get_query_values(statements: list[InputAndSystemStatement],
                                                                     placeholder_map,
                                                                     placeholder_set,
                                                                     placeholder_dummy_set,
-                                                                    custom_definition_names)
+                                                                    custom_definition_names,
+                                                                    extreme_value_definitions)
     except DuplicateAssignment as e:
         error = f"Duplicate assignment of variable {e}"
     except ReferenceCycle as e:
@@ -4120,6 +4331,7 @@ def solve_sheet(statements_and_systems) -> str:
     custom_base_units = statements_and_systems.get("customBaseUnits", None)
     simplify_symbolic_expressions = statements_and_systems["simplifySymbolicExpressions"]
     convert_floats_to_fractions = statements_and_systems["convertFloatsToFractions"]
+    extreme_value_definitions: list[ExtremeValueDefinition] = statements_and_systems.get("extremeValueDefinitions", [])
 
     code_cell_result_store: dict[str, CodeCellResultCollector] = {}
 
@@ -4208,7 +4420,8 @@ def solve_sheet(statements_and_systems) -> str:
                                                                     placeholder_map,
                                                                     placeholder_set,
                                                                     placeholder_dummy_set,
-                                                                    custom_definition_names)
+                                                                    custom_definition_names,
+                                                                    extreme_value_definitions)
 
     # If there was a numerical solve, check to make sure there were not unit mismatches
     # between the lhs and rhs of each equality in the system

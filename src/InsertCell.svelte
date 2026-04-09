@@ -16,6 +16,7 @@
   import InsertPage from "carbon-icons-svelte/lib/InsertPage.svelte";
   import RainDrop from "carbon-icons-svelte/lib/RainDrop.svelte";
   import DataTable from "carbon-icons-svelte/lib/DataTable.svelte";
+  import Analytics from "carbon-icons-svelte/lib/Analytics.svelte";
 
   interface Props {
     index: number;
@@ -327,24 +328,41 @@
 
       <button
         id={"insert-popup-button-0"}
-        onclick={dispatchInsertSheet}
+        onclick={() => insertNewCell('extremeValue')}
         bind:this={buttonArray[9]}
         onkeydown={(e) => handleKeyboard(e, 9)}
       >
         <div class="button-text">
           {#if !appState.onMobile}
             <div>0</div>
+            <div>Extreme Value Analysis Cell</div>
+          {:else}
+            <div>EVA Cell</div>
+          {/if}
+          <div><Analytics size={20}/></div>
+        </div>
+      </button>
+
+      <button
+        id={"insert-popup-button-minus"}
+        onclick={dispatchInsertSheet}
+        bind:this={buttonArray[10]}
+        onkeydown={(e) => handleKeyboard(e, 10)}
+      >
+        <div class="button-text">
+          {#if !appState.onMobile}
+            <div>-</div>
           {/if}
           <div>Insert Sheet</div>
           <div><InsertPage size={20}/></div>
         </div>
       </button>
 
-      <button 
+      <button
         id={"insert-popup-button-esc"}
         onclick={deleteMyself}
-        bind:this={buttonArray[10]}
-        onkeydown={(e) => handleKeyboard(e, 10)}
+        bind:this={buttonArray[11]}
+        onkeydown={(e) => handleKeyboard(e, 11)}
       >
         <div class="button-text">
           {#if !appState.onMobile}
