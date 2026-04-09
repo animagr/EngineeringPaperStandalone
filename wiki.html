@@ -230,6 +230,7 @@
 
   <div class="nav-section">
     <div class="nav-section-title">Features</div>
+    <a class="nav-link" href="#" data-page="cells">Cell Types</a>
     <a class="nav-link" href="#" data-page="standalone">Standalone Mode</a>
     <a class="nav-link" href="#" data-page="export">Export</a>
     <a class="nav-link" href="#" data-page="annotation">Annotation Column</a>
@@ -343,6 +344,97 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
       <tr><td><code>launcher.cjs</code></td><td>Streaming HTTP server + browser launcher (CommonJS, embedded by pkg)</td></tr>
       <tr><td><code>dist/EngineeringPaper.exe</code></td><td>Final executable (gitignored)</td></tr>
     </table>
+  </div>
+
+  <!-- CELL TYPES -->
+  <div class="page" id="page-cells">
+    <h1>Cell Types</h1>
+    <p>Every row in a sheet is a cell. Cells are inserted via the toolbar or insert menu. Each type has a distinct purpose; results flow from top to bottom — variables defined in earlier cells are available in later ones.</p>
+
+    <h2>Math Cell</h2>
+    <p><strong>Insert key:</strong> <code>1</code> &nbsp;|&nbsp; <strong>Icon:</strong> +</p>
+    <p>The primary cell type. Accepts mathematical expressions in LaTeX notation.</p>
+    <ul>
+      <li><strong>Assignment:</strong> <code>x = 5 [m]</code> — defines a variable with optional units</li>
+      <li><strong>Query:</strong> <code>x =</code> — evaluates and displays the result</li>
+      <li><strong>Equation:</strong> <code>F = m \cdot a</code> — defines a relationship</li>
+    </ul>
+    <p>Units are automatically converted and checked for dimensional consistency. Number formatting is configurable per cell. An optional annotation column to the right lets you add notes or unit labels. If a range expression is entered, the cell automatically converts to a Plot Cell.</p>
+
+    <h2>Documentation Cell</h2>
+    <p><strong>Insert key:</strong> <code>2</code> &nbsp;|&nbsp; <strong>Icon:</strong> comment</p>
+    <p>A rich-text editor (Quill) for adding headings, paragraphs, lists, and formatted notes between calculations. Content is stored as markdown and exported to DOCX/PDF. Spell-check is active when the cell is focused.</p>
+
+    <h2>Plot Cell</h2>
+    <p><strong>Insert key:</strong> <code>3</code> &nbsp;|&nbsp; <strong>Icon:</strong> smooth line</p>
+    <p>Renders interactive 2D line plots. Define one or more expressions over a range (e.g., <code>y = x^2</code> for <code>x</code> from 0 to 10). Supports:</p>
+    <ul>
+      <li>Multiple curves on the same axes</li>
+      <li>Up to 4 different y-axis unit groups simultaneously</li>
+      <li>Log scale on either axis</li>
+      <li>Square aspect ratio toggle</li>
+      <li>Copy plot data to clipboard as tab-separated values</li>
+    </ul>
+
+    <h2>Selector Table Cell</h2>
+    <p><strong>Insert key:</strong> <code>4</code> &nbsp;|&nbsp; <strong>Icon:</strong> grid</p>
+    <p>A lookup table where each row represents a scenario or component variant. The user selects one row via radio button; the selected row's values are injected as variable assignments into the rest of the sheet. Supports optional units per column, per-row documentation, and collapsible unselected rows.</p>
+
+    <h2>Data Table Cell</h2>
+    <p><strong>Insert key:</strong> <code>5</code> &nbsp;|&nbsp; <strong>Icon:</strong> data table</p>
+    <p>A spreadsheet-style grid for tabular numeric data. Columns can be:</p>
+    <ul>
+      <li><strong>Input:</strong> user-entered values (with optional units)</li>
+      <li><strong>Calculated:</strong> expressions evaluated for each row</li>
+    </ul>
+    <p>Can generate interpolation or polynomial fit functions from the data, usable in other cells. Supports CSV import/export and per-column number formatting.</p>
+
+    <h2>Piecewise Expression Cell</h2>
+    <p><strong>Insert key:</strong> <code>6</code> &nbsp;|&nbsp; <strong>Icon:</strong> line chart</p>
+    <p>Defines a piecewise function: a parameter name plus a list of expression/condition pairs, with a final default (otherwise) case. Example:</p>
+    <pre><code>f(x) = { x²     if x &lt; 0
+         { 2x    if x &lt; 10
+         { 100   otherwise</code></pre>
+    <p>The result is a single named function available to the rest of the sheet.</p>
+
+    <h2>System Solve Cell</h2>
+    <p><strong>Insert key:</strong> <code>7</code> &nbsp;|&nbsp; <strong>Icon:</strong> IBM Watson Studio</p>
+    <p>Solves a system of simultaneous equations. Enter the equations and list the unknowns to solve for. Supports both exact (algebraic) and numerical solving with optional initial guesses. When multiple solutions exist, they are listed with a radio button to select which one to use downstream.</p>
+
+    <h2>Code Cell</h2>
+    <p><strong>Insert key:</strong> <code>8</code> &nbsp;|&nbsp; <strong>Icon:</strong> code brackets</p>
+    <p>Executes Python code directly in the browser via Pyodide. Define a function that can be called from math cells. Supports:</p>
+    <ul>
+      <li>SymPy mode — return symbolic expressions</li>
+      <li>Numeric mode — return plain numbers</li>
+      <li>Access to all Pyodide-available packages</li>
+      <li>stdout capture displayed below the cell</li>
+    </ul>
+    <p>The function name is entered in math notation and becomes callable in subsequent math cells.</p>
+
+    <h2>Fluid Properties Cell</h2>
+    <p><strong>Insert key:</strong> <code>9</code> &nbsp;|&nbsp; <strong>Icon:</strong> raindrop</p>
+    <p>Creates a thermodynamic property lookup function backed by the <strong>CoolProp</strong> library. Select a fluid, choose input/output properties (temperature, pressure, enthalpy, entropy, etc.), and give the function a name. Supports:</p>
+    <ul>
+      <li>Pure fluids</li>
+      <li>Incompressible mixtures (with concentration)</li>
+      <li>Humid air (three-property inputs)</li>
+      <li>Custom fluid mixtures</li>
+    </ul>
+    <p>The function is then callable in math cells like any other function.</p>
+
+    <h2>Extreme Value Analysis (EVA) Cell</h2>
+    <p><strong>Insert key:</strong> <code>0</code> &nbsp;|&nbsp; <strong>Icon:</strong> analytics bar chart</p>
+    <p>Finds the worst-case minimum and maximum of an output expression by evaluating it at all 2<sup>n</sup> combinations of parameter min/max bounds. Enter:</p>
+    <ul>
+      <li><strong>Query:</strong> the expression to evaluate (e.g., <code>I=</code>)</li>
+      <li><strong>Parameters:</strong> one row per variable — name, min value, max value</li>
+    </ul>
+    <p>Results display the computed minimum and maximum with units. Parameters can use plain numbers or values with units. Max 20 parameters.</p>
+
+    <h2>Insert Sheet</h2>
+    <p><strong>Insert key:</strong> <code>-</code> &nbsp;|&nbsp; <strong>Icon:</strong> insert page</p>
+    <p>Not a cell — inserts a sheet boundary, splitting the document into multiple named sheets that share a single file but can be navigated independently.</p>
   </div>
 
   <!-- STANDALONE MODE -->
