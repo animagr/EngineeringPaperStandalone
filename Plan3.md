@@ -10,7 +10,7 @@ Users want to find worst-case min/max of an output expression by evaluating it a
 
 **Table**: rows of `Parameter | Min | Max` (no units column — units inherited from parameter's assignment elsewhere on sheet)
 **Query field**: expression to evaluate (e.g., `I_{out}=`)
-**Output**: min and max result values
+**Output**: min and max result values, plus sensitivity list showing each parameter's contribution
 
 ---
 
@@ -26,7 +26,9 @@ After normal `evaluate_statements()` computes the nominal result:
    - Copy `parameter_subs`, override varied param symbols
    - Call `get_evaluated_expression()` with fresh `expression_cache`
    - Call `get_result()`, track numeric min and max
-5. Replace `results[query_index]` with `ExtremeValueResult`
+5. **Sensitivity analysis**: For each parameter, vary it min→max while holding others at midpoint, measure output change
+6. Convert contributions to percentages, sort by magnitude (descending)
+7. Replace `results[query_index]` with `ExtremeValueResult` including sensitivity list
 
 ---
 
@@ -57,9 +59,12 @@ Svelte component with CSS grid layout:
 - Query MathField at top
 - Table: Parameter | Min | Max columns with MathField inputs
 - Add/delete row buttons
-- Result display area: "Min: [value] [units]" / "Max: [value] [units]"
+- Result display area:
+  - "Min: [value] [units]"
+  - "Max: [value] [units]"
+  - "Sensitivity:" header followed by parameter list with percentages (sorted by contribution)
 - Props: `index, extremeValueCell, insertMathCellAfter, insertInsertCellAfter, mathCellChanged, triggerSaveNeeded`
-- Export `getMarkdown(centerEquations)` for document export
+- Export `getMarkdown(centerEquations)` for document export (includes sensitivity list)
 
 ---
 
@@ -109,11 +114,18 @@ Svelte component with CSS grid layout:
 ### `src/resultTypes.ts`
 - Add:
   ```typescript
+  type SensitivityEntry = {
+    paramName: string;
+    contribution: number;
+    percentage: number;
+  };
+
   type ExtremeValueResult = {
     extremeValueResult: true;
     nominalResult: Result | FiniteImagResult;
     minResult: Result | FiniteImagResult;
     maxResult: Result | FiniteImagResult;
+    sensitivity?: SensitivityEntry[];  // sorted by contribution descending
     error?: string;
   };
   ```

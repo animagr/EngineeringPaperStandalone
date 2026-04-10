@@ -430,7 +430,7 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
       <li><strong>Query:</strong> the expression to evaluate (e.g., <code>I=</code>)</li>
       <li><strong>Parameters:</strong> one row per variable — name, min value, max value</li>
     </ul>
-    <p>Results display the computed minimum and maximum with units. Parameters can use plain numbers or values with units. Max 20 parameters.</p>
+    <p>Results display the computed minimum and maximum with units, followed by a <strong>sensitivity list</strong> showing each parameter's percentage contribution to the output variation (sorted highest to lowest). Parameters can use plain numbers or values with units. Max 20 parameters.</p>
 
     <h2>Insert Sheet</h2>
     <p><strong>Insert key:</strong> <code>-</code> &nbsp;|&nbsp; <strong>Icon:</strong> insert page</p>
@@ -507,7 +507,7 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
   <!-- EVA CELL -->
   <div class="page" id="page-eva">
     <h1>Extreme Value Analysis (EVA) Cell</h1>
-    <p>Finds the worst-case min/max of an output expression by evaluating it at all 2<sup>n</sup> combinations of input parameter min/max bounds.</p>
+    <p>Finds the worst-case min/max of an output expression by evaluating it at all 2<sup>n</sup> combinations of input parameter min/max bounds, plus a sensitivity analysis showing each parameter's contribution to the output variation.</p>
 
     <h2>Usage</h2>
     <ol>
@@ -515,8 +515,19 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
       <li>Insert an EVA cell via the toolbar (Analytics icon) or insert menu (key <code>0</code>)</li>
       <li>Set the <strong>Query</strong> field to the expression to evaluate (e.g., <code>I=</code>)</li>
       <li>Add parameter rows: <strong>Parameter</strong> name, <strong>Min</strong>, and <strong>Max</strong> values (plain numbers or with units)</li>
-      <li>Results display the overall min and max output values</li>
+      <li>Results display the overall min and max output values, followed by a sensitivity list</li>
     </ol>
+
+    <h2>Sensitivity Analysis</h2>
+    <p>After the min/max results, a <strong>Sensitivity</strong> list shows each parameter's contribution to the output variation, sorted from highest to lowest. The percentage indicates how much of the total output swing is attributable to each parameter.</p>
+    <p>Calculation method:</p>
+    <ul>
+      <li>For each parameter, hold all other parameters at their midpoint value</li>
+      <li>Evaluate the query at that parameter's min and max values</li>
+      <li>The difference is that parameter's contribution to the output variation</li>
+      <li>Percentages are normalized to sum to 100%</li>
+    </ul>
+    <p>This helps identify which tolerances have the greatest impact on the result and where tightening tolerances would be most effective.</p>
 
     <h2>How It Works</h2>
     <ul>
@@ -524,6 +535,7 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
       <li>For n parameters, all 2<sup>n</sup> combinations of min/max bounds are evaluated</li>
       <li>Each combination overrides the parameter symbol in <code>parameter_subs</code> and re-evaluates via <code>get_evaluated_expression()</code> with a fresh cache</li>
       <li>Results show the min and max output across all combinations</li>
+      <li>Sensitivity is computed by varying each parameter individually while holding others at midpoint</li>
       <li>Max 20 parameters (2<sup>20</sup> = ~1M combinations)</li>
     </ul>
 
@@ -540,9 +552,9 @@ taskkill /PID &lt;pid&gt; /F</code></pre>
       <tr><td><code>src/Cell.svelte</code></td><td>Added routing for ExtremeValueCell</td></tr>
       <tr><td><code>src/App.svelte</code></td><td>Statement collection, result distribution, parsing error check</td></tr>
       <tr><td><code>src/types.ts</code></td><td><code>ExtremeValueDefinition</code>, <code>ExtremeValueParameter</code> types</td></tr>
-      <tr><td><code>src/resultTypes.ts</code></td><td><code>ExtremeValueResult</code> type and guard</td></tr>
+      <tr><td><code>src/resultTypes.ts</code></td><td><code>SensitivityEntry</code>, <code>ExtremeValueResult</code> types and guard</td></tr>
       <tr><td><code>src/sheet/Sheet.ts</code></td><td>Added ExtremeValueResult to Sheet results type</td></tr>
-      <tr><td><code>public/dimensional_analysis.py</code></td><td>EVA types, expression rebuilding with symbol preservation, 2<sup>n</sup> combination evaluation</td></tr>
+      <tr><td><code>public/dimensional_analysis.py</code></td><td>EVA types, expression rebuilding with symbol preservation, 2<sup>n</sup> combination evaluation, sensitivity analysis</td></tr>
     </table>
   </div>
 

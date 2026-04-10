@@ -132,7 +132,7 @@ DOCX export uses `pandoc-wasm` (the full pandoc engine compiled to WebAssembly, 
 
 ## Extreme Value Analysis (EVA) Cell
 
-A new cell type that finds worst-case min/max of an output expression by evaluating it at all 2^n combinations of input parameter min/max bounds.
+A new cell type that finds worst-case min/max of an output expression by evaluating it at all 2^n combinations of input parameter min/max bounds, plus sensitivity analysis showing each parameter's contribution to the output variation.
 
 ### Usage
 
@@ -140,7 +140,7 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 2. Insert an EVA cell (button 0 in the insert menu, or the Analytics icon)
 3. Set the **Query** field to the expression to evaluate (e.g., `I=`)
 4. Add parameter rows with **Parameter** name, **Min**, and **Max** values (plain numbers — units inherited from the sheet)
-5. Results display the overall min and max output values
+5. Results display the overall min and max output values, followed by a sensitivity list
 
 ### How it works
 
@@ -148,6 +148,7 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 - Overrides `parameter_subs` in the existing SymPy evaluation pipeline (no full re-evaluation per combination)
 - Max 20 parameters (2^20 = ~1M combinations)
 - Results show the nominal value plus the extreme min and max
+- **Sensitivity analysis**: For each parameter, varies it from min to max while holding others at their midpoint, measures the output change, and reports percentage contribution (sorted highest to lowest)
 
 ### Files added/changed
 
@@ -162,9 +163,9 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 | `src/Cell.svelte` | Added routing for ExtremeValueCell |
 | `src/App.svelte` | Statement collection, result distribution, parsing error check |
 | `src/types.ts` | `ExtremeValueDefinition`, `ExtremeValueParameter` types |
-| `src/resultTypes.ts` | `ExtremeValueResult` type and guard |
+| `src/resultTypes.ts` | `SensitivityEntry`, `ExtremeValueResult` types and guard |
 | `src/sheet/Sheet.ts` | Added ExtremeValueResult to Sheet results type |
-| `public/dimensional_analysis.py` | EVA types, 2^n combination evaluation in `evaluate_statements()` |
+| `public/dimensional_analysis.py` | EVA types, 2^n combination evaluation, sensitivity analysis in `evaluate_statements()` |
 
 ---
 
