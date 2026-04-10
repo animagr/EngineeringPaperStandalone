@@ -662,11 +662,17 @@ def is_matrix_result(result: Result | FiniteImagResult | MatrixResult | PlotResu
 def is_matrix(expression: Expr | Matrix) -> TypeGuard[Matrix]:
     return isinstance(expression, MatrixBase)
 
+class SensitivityEntry(TypedDict):
+    paramName: str
+    contribution: float  # absolute contribution to output variation
+    percentage: float    # percentage of total variation
+
 class ExtremeValueResult(TypedDict):
     extremeValueResult: Literal[True]
     nominalResult: Result | FiniteImagResult
     minResult: Result | FiniteImagResult
     maxResult: Result | FiniteImagResult
+    sensitivity: NotRequired[list[SensitivityEntry]]
     error: NotRequired[str]
 
 class Results(TypedDict):
@@ -4076,6 +4082,9 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
             min_result = None
             max_result = None
 
+            # Calculate midpoint values for sensitivity analysis
+            param_midpoints = [(sym, (min_val + max_val) / 2, min_val, max_val) for sym, min_val, max_val in param_overrides]
+
             for combo in itertools_product([False, True], repeat=n):
                 trial_subs = dict(parameter_subs)
                 # Override EVA parameter variable symbols with min/max values
@@ -4123,11 +4132,61 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
                     continue
 
             if min_result is not None and max_result is not None:
+                # Calculate sensitivity: contribution of each parameter to output variation
+                # For each parameter, vary it min->max while holding others at midpoint
+                sensitivity_list: list[SensitivityEntry] = []
+
+                for i, (sym, mid_val, min_val, max_val) in enumerate(param_midpoints):
+                    # Build subs with all params at midpoint
+                    base_subs = dict(parameter_subs)
+                    for j, (s, m, _, _) in enumerate(param_midpoints):
+                        base_subs[s] = m
+
+                    # Evaluate at param min
+                    base_subs[sym] = min_val
+                    try:
+                        eval_at_min, _, _, _ = get_evaluated_expression(
+                            query_expression, not convert_floats_to_fractions,
+                            base_subs, ev_dim_subs, placeholder_map, placeholder_set,
+                            {}, variable_name_map
+                        )
+                        val_at_min = float(eval_at_min.evalf(PRECISION)) if not is_matrix(eval_at_min) else None
+                    except:
+                        val_at_min = None
+
+                    # Evaluate at param max
+                    base_subs[sym] = max_val
+                    try:
+                        eval_at_max, _, _, _ = get_evaluated_expression(
+                            query_expression, not convert_floats_to_fractions,
+                            base_subs, ev_dim_subs, placeholder_map, placeholder_set,
+                            {}, variable_name_map
+                        )
+                        val_at_max = float(eval_at_max.evalf(PRECISION)) if not is_matrix(eval_at_max) else None
+                    except:
+                        val_at_max = None
+
+                    if val_at_min is not None and val_at_max is not None:
+                        contribution = abs(val_at_max - val_at_min)
+                        sensitivity_list.append(SensitivityEntry(
+                            paramName=str(sym),
+                            contribution=contribution,
+                            percentage=0.0  # will calculate after we have total
+                        ))
+
+                # Calculate percentages and sort by contribution (descending)
+                total_contribution = sum(e["contribution"] for e in sensitivity_list)
+                if total_contribution > 0:
+                    for entry in sensitivity_list:
+                        entry["percentage"] = (entry["contribution"] / total_contribution) * 100
+                sensitivity_list.sort(key=lambda e: e["contribution"], reverse=True)
+
                 results_with_ranges[query_index] = ExtremeValueResult(
                     extremeValueResult=True,
                     nominalResult=cast(Result | FiniteImagResult, nominal_result),
                     minResult=cast(Result | FiniteImagResult, min_result),
-                    maxResult=cast(Result | FiniteImagResult, max_result)
+                    maxResult=cast(Result | FiniteImagResult, max_result),
+                    sensitivity=sensitivity_list
                 )
             else:
                 results_with_ranges[query_index] = ExtremeValueResult(

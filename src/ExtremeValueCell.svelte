@@ -72,6 +72,13 @@
       } else {
         md += `Min: ${startDelimiter}${evaResult.minResult.value} ${evaResult.minResult.unitsLatex}${endDelimiter}\n\n`;
         md += `Max: ${startDelimiter}${evaResult.maxResult.value} ${evaResult.maxResult.unitsLatex}${endDelimiter}\n\n`;
+        if (evaResult.sensitivity && evaResult.sensitivity.length > 0) {
+          md += `**Sensitivity:**\n`;
+          for (const entry of evaResult.sensitivity) {
+            md += `- ${entry.paramName}: ${entry.percentage.toFixed(1)}%\n`;
+          }
+          md += `\n`;
+        }
       }
     }
 
@@ -169,6 +176,42 @@
     row-gap: 4px;
     padding-top: 4px;
     border-top: 1px solid #ddd;
+  }
+
+  div.sensitivity-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+  }
+
+  span.sensitivity-header {
+    font-weight: bold;
+    font-size: 0.85em;
+    color: #555;
+  }
+
+  div.sensitivity-list {
+    display: flex;
+    flex-direction: column;
+    row-gap: 2px;
+    margin-top: 4px;
+    padding-left: 8px;
+  }
+
+  div.sensitivity-entry {
+    display: flex;
+    align-items: center;
+    column-gap: 8px;
+    font-size: 0.85em;
+  }
+
+  span.param-name {
+    min-width: 80px;
+    font-family: monospace;
+  }
+
+  span.param-percent {
+    color: #666;
   }
 
   @media print {
@@ -298,6 +341,19 @@
             latex={`=${evaResult.maxResult.value}${evaResult.maxResult.unitsLatex ? '\\,' + evaResult.maxResult.unitsLatex : ''}`}
           />
         </div>
+        {#if evaResult.sensitivity && evaResult.sensitivity.length > 0}
+          <div class="sensitivity-section">
+            <span class="sensitivity-header">Sensitivity:</span>
+            <div class="sensitivity-list">
+              {#each evaResult.sensitivity as entry}
+                <div class="sensitivity-entry">
+                  <span class="param-name">{entry.paramName}</span>
+                  <span class="param-percent">{entry.percentage.toFixed(1)}%</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       {/if}
     </div>
   {/if}

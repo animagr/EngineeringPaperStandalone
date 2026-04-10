@@ -124,11 +124,18 @@ export type RenderResult = {
   dimensionError: string
 }
 
+export type SensitivityEntry = {
+  paramName: string;
+  contribution: number;
+  percentage: number;
+};
+
 export type ExtremeValueResult = {
   extremeValueResult: true;
   nominalResult: Result | FiniteImagResult;
   minResult: Result | FiniteImagResult;
   maxResult: Result | FiniteImagResult;
+  sensitivity?: SensitivityEntry[];
   error?: string;
 };
 
