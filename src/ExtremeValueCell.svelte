@@ -1,16 +1,20 @@
 <script lang="ts">
+  import { bignumber, format, type BigNumber, type FormatOptions } from "mathjs";
   import appState from "./stores.svelte";
-  import { isExtremeValueResult } from "./resultTypes";
+  import { isExtremeValueResult, isFiniteImagResult, type Result, type FiniteImagResult } from "./resultTypes";
+  import { defaultConfig, type NumberFormatOptions } from "./sheet/Sheet";
 
   import type ExtremeValueCell from "./cells/ExtremeValueCell.svelte";
 
   import MathField from "./MathField.svelte";
   import IconButton from "./IconButton.svelte";
+  import NumberFormatOptionsDialog from "./NumberFormatOptionsDialog.svelte";
 
-  import { TooltipIcon } from "carbon-components-svelte";
+  import { TooltipIcon, Modal } from "carbon-components-svelte";
   import Error from "carbon-icons-svelte/lib/Error.svelte";
   import Add from "carbon-icons-svelte/lib/Add.svelte";
   import RowDelete from "carbon-icons-svelte/lib/RowDelete.svelte";
+  import SettingsAdjust from "carbon-icons-svelte/lib/SettingsAdjust.svelte";
 
   interface Props {
     index: number;
@@ -34,6 +38,51 @@
 
   let result = $derived(appState.results[index]);
   let evaResult = $derived(result && !Array.isArray(result) && isExtremeValueResult(result) ? result : null);
+
+  let formatOptionsOpen = $state(false);
+  let formatOptionsDialogRef: NumberFormatOptionsDialog;
+
+  // Get format options (use cell's options or default)
+  let formatOptions = $derived(extremeValueCell.formatOptions ?? defaultConfig.mathCellConfig.formatOptions);
+
+  function scientificToLatex(value: string): string {
+    if (value.includes('e')) {
+      return value.replace('e', '\\times 10^{').replace('+', '') + '}';
+    } else {
+      return value;
+    }
+  }
+
+  function customFormat(input: BigNumber, options: FormatOptions): string {
+    return scientificToLatex(format(input, options));
+  }
+
+  function formatResultValue(resultObj: Result | FiniteImagResult): string {
+    if (isFiniteImagResult(resultObj)) {
+      // For complex numbers, just show the raw value for now
+      return resultObj.value;
+    }
+    // Check if it's a numeric value that can be formatted
+    const numValue = parseFloat(resultObj.value);
+    if (!isNaN(numValue) && isFinite(numValue)) {
+      return customFormat(bignumber(resultObj.value), formatOptions);
+    }
+    // Fallback for symbolic/non-numeric values
+    return resultObj.symbolicValue ?? resultObj.value;
+  }
+
+  function openFormatOptions() {
+    formatOptionsOpen = true;
+  }
+
+  function handleFormatOptionsChange(newOptions: NumberFormatOptions | null) {
+    extremeValueCell.formatOptions = newOptions;
+    triggerSaveNeeded();
+  }
+
+  function closeFormatOptions() {
+    formatOptionsOpen = false;
+  }
 
   export function getMarkdown(centerEquations: boolean) {
     let md = "";
@@ -70,8 +119,8 @@
       if (evaResult.error) {
         md += `Error: ${evaResult.error}\n\n`;
       } else {
-        md += `Min: ${startDelimiter}${evaResult.minResult.value} ${evaResult.minResult.unitsLatex}${endDelimiter}\n\n`;
-        md += `Max: ${startDelimiter}${evaResult.maxResult.value} ${evaResult.maxResult.unitsLatex}${endDelimiter}\n\n`;
+        md += `Min: ${startDelimiter}${formatResultValue(evaResult.minResult)} ${evaResult.minResult.unitsLatex}${endDelimiter}\n\n`;
+        md += `Max: ${startDelimiter}${formatResultValue(evaResult.maxResult)} ${evaResult.maxResult.unitsLatex}${endDelimiter}\n\n`;
         if (evaResult.sensitivity && evaResult.sensitivity.length > 0) {
           md += `**Sensitivity:**\n`;
           for (const entry of evaResult.sensitivity) {
@@ -331,14 +380,21 @@
           <span class="result-label">Min:</span>
           <MathField
             hidden={appState.resultsInvalid}
-            latex={`=${evaResult.minResult.value}${evaResult.minResult.unitsLatex ? '\\,' + evaResult.minResult.unitsLatex : ''}`}
+            latex={`=${formatResultValue(evaResult.minResult)}${evaResult.minResult.unitsLatex ? '\\,' + evaResult.minResult.unitsLatex : ''}`}
           />
+          <IconButton
+            title="Format options"
+            id={`eva-format-options-${index}`}
+            click={openFormatOptions}
+          >
+            <SettingsAdjust size={16}/>
+          </IconButton>
         </div>
         <div class="result-row">
           <span class="result-label">Max:</span>
           <MathField
             hidden={appState.resultsInvalid}
-            latex={`=${evaResult.maxResult.value}${evaResult.maxResult.unitsLatex ? '\\,' + evaResult.maxResult.unitsLatex : ''}`}
+            latex={`=${formatResultValue(evaResult.maxResult)}${evaResult.maxResult.unitsLatex ? '\\,' + evaResult.maxResult.unitsLatex : ''}`}
           />
         </div>
         {#if evaResult.sensitivity && evaResult.sensitivity.length > 0}
@@ -358,3 +414,19 @@
     </div>
   {/if}
 </div>
+
+<Modal
+  bind:open={formatOptionsOpen}
+  modalHeading="Number Format Options"
+  primaryButtonText="Done"
+  on:click:button--primary={closeFormatOptions}
+  on:close={closeFormatOptions}
+  size="sm"
+>
+  <NumberFormatOptionsDialog
+    bind:this={formatOptionsDialogRef}
+    numberFormatOptions={extremeValueCell.formatOptions}
+    nullIfDefault={true}
+    onchange={handleFormatOptionsChange}
+  />
+</Modal>

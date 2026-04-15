@@ -1,6 +1,7 @@
 import { BaseCell, type DatabaseExtremeValueCell } from "./BaseCell";
 import { MathField } from "./MathField.svelte";
 import type { Statement } from "../parser/types";
+import { defaultConfig, type NumberFormatOptions } from "../sheet/Sheet";
 
 const MAX_PARAMETERS = 20;
 
@@ -9,6 +10,7 @@ export default class ExtremeValueCell extends BaseCell {
   minFields: MathField[] = $state();
   maxFields: MathField[] = $state();
   queryField: MathField = $state();
+  formatOptions: NumberFormatOptions | null = $state(null);
 
   // Internal fields for building "param = min_value" / "param = max_value" assignment statements
   combinedMinFields: MathField[];
@@ -28,6 +30,7 @@ export default class ExtremeValueCell extends BaseCell {
       this.combinedMaxFields = [new MathField()];
       this.minStatements = [];
       this.maxStatements = [];
+      this.formatOptions = null;
     } else {
       this.parameterFields = arg.parameterLatexs.map((latex) => new MathField(latex, 'parameter'));
       this.minFields = arg.minLatexs.map((latex) => new MathField(latex, 'number'));
@@ -37,6 +40,7 @@ export default class ExtremeValueCell extends BaseCell {
       this.combinedMaxFields = arg.parameterLatexs.map(() => new MathField());
       this.minStatements = [];
       this.maxStatements = [];
+      this.formatOptions = arg.formatOptions ?? null;
     }
   }
 
@@ -48,6 +52,7 @@ export default class ExtremeValueCell extends BaseCell {
       minLatexs: this.minFields.map((f) => f.latex),
       maxLatexs: this.maxFields.map((f) => f.latex),
       queryLatex: this.queryField.latex,
+      formatOptions: this.formatOptions,
     };
   }
 

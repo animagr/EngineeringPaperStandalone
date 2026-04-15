@@ -125,7 +125,8 @@ export type DatabaseExtremeValueCell = {
   parameterLatexs: string[],
   minLatexs: string[],
   maxLatexs: string[],
-  queryLatex: string
+  queryLatex: string,
+  formatOptions?: NumberFormatOptions | null
 }
 
 export abstract class BaseCell {
