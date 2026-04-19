@@ -1,6 +1,40 @@
-# Standalone Mode + Local DOCX Export
+# EngineeringPaper.xyz — Standalone Edition
 
-A standalone build of EngineeringPaper.xyz that runs entirely in the browser with no server required. Computation already ran in-browser via Pyodide/SymPy. This build additionally moves DOCX export in-browser using `pandoc-wasm` and routes PDF export to the browser print dialog.
+A standalone build of [EngineeringPaper.xyz](https://engineeringpaper.xyz) that runs entirely in the browser with no server required.
+
+> **Fork notice:** This is a fork of the original EngineeringPaper.xyz, based on version **20260313**. The upstream project is hosted at [engineeringpaper.xyz](https://engineeringpaper.xyz).
+
+---
+
+## What Is EngineeringPaper.xyz?
+
+A web app for engineering calculations with:
+- Automatic unit conversion and dimensional analysis
+- Plotting and data tables
+- Systems of equations
+- Documentation cells with rich text
+
+Calculations run in-browser using **Pyodide** (Python compiled to WebAssembly) with **SymPy** as the computation engine.
+
+---
+
+## What's Different in Standalone Mode
+
+This fork removes all server dependencies. Everything runs locally:
+
+| Feature | Original | Standalone |
+|---------|----------|------------|
+| Computation | In-browser (Pyodide/SymPy) | Same |
+| `.epxyz` save/load | Local file | Same |
+| Markdown export | Local file | Same |
+| DOCX export | Server-side (pandoc) | In-browser via `pandoc-wasm` |
+| PDF export | Server-side | Browser print dialog |
+| LaTeX export | Server-side | Hidden (not available) |
+| Shareable links | Server-required | Hidden |
+| Example sheets | Server-required | Hidden |
+| Prebuilt tables | Server-required | Hidden |
+
+DOCX export uses `pandoc-wasm` (the full pandoc engine compiled to WebAssembly). Equations are converted to native Word OMML format — editable in Microsoft Word, not images. The WASM binary (~58 MB) loads on-demand the first time you export to DOCX.
 
 ---
 
@@ -18,7 +52,7 @@ npm install
 npm run build:standalone
 ```
 
-Output goes to `public/` as usual.
+Output goes to `public/`.
 
 ### Serve locally
 
@@ -27,8 +61,6 @@ npm run start:standalone
 ```
 
 Opens at **http://localhost:8788**
-
-> The `--single` flag is required so the dev server falls back to `index.html` for all routes (SPA behavior).
 
 ### Combined build + serve
 
@@ -42,7 +74,7 @@ npm run build:standalone && npm run start:standalone
 npm run dev:standalone
 ```
 
-This watches for file changes and rebuilds automatically. The dev server starts automatically after the first build.
+Watches for file changes and rebuilds automatically.
 
 ---
 
@@ -50,19 +82,27 @@ This watches for file changes and rebuilds automatically. The dev server starts 
 
 Produces a single `EngineeringPaper.exe` (~330 MB) with Node.js and all assets embedded. No prior software installation required on the target machine — double-click to launch.
 
-### One-time setup
-
-```bash
-npm install
-```
-
 ### Build the exe
 
 ```bash
 npm run package:win
 ```
 
-This runs `build:standalone` first (rebuilds `public/`), then packages everything into `dist/EngineeringPaper.exe`.
+This runs `build:standalone` first, then packages everything into `dist/EngineeringPaper.exe`.
+
+### Build steps separately (for debugging)
+
+```bash
+npm run build:standalone
+npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper
+```
+
+### Build with verbose output
+
+```bash
+npm run build:standalone
+npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper --debug
+```
 
 ### Run
 
@@ -74,22 +114,41 @@ Double-click `dist/EngineeringPaper.exe`, or from a terminal:
 
 The server starts at `http://localhost:8788` and your default browser opens automatically. Press `Ctrl+C` in the terminal to stop.
 
-> If port 8788 is already in use (e.g. another instance is running), the exe will print an error and exit rather than hanging silently.
+> If port 8788 is already in use (e.g. another instance is running), the exe will print an error and exit.
 
-### Files added for packaging
+### Choosing a browser (browser.txt)
 
-| File | Purpose |
-|------|---------|
-| `launcher.cjs` | Streaming HTTP server + browser launcher (CommonJS, embedded by pkg) |
-| `dist/EngineeringPaper.exe` | Final executable (gitignored) |
+By default, the exe opens your system's default browser. To use a specific browser, create a `browser.txt` file in the same folder as the exe (`dist/browser.txt`).
 
-**`package.json` additions:** `package:win` script; `@yao-pkg/pkg` devDependency; `pkg.assets` config block pointing to `public/**/*`.
+**For Chrome:**
+
+```
+chrome
+```
+
+**For Firefox:**
+
+```
+firefox
+```
+
+**For a specific browser path:**
+
+```
+C:\Program Files\Google\Chrome\Application\chrome.exe
+```
+
+The file should contain just one line with the browser name or full path. Delete the file (or leave it empty) to revert to system default.
+
+You can also override via command line:
+
+```bash
+./dist/EngineeringPaper.exe --browser firefox
+```
 
 ### Troubleshooting: port 8788 already in use
 
-If the exe opens the browser but shows an old version, a previous server process may still be running on port 8788. The exe detects the port is taken and opens the browser to the existing (stale) server instead of starting a new one.
-
-To fix, kill the old process first:
+If the exe opens the browser but shows an old version, a previous server process may still be running. Kill it first:
 
 ```bash
 netstat -ano | findstr :8788
@@ -100,65 +159,66 @@ Then relaunch the exe.
 
 ---
 
-## Annotation Column for Math Cells
+## New Features in This Fork
 
-Math cells have an optional annotation column to the right where you can add units descriptions, notes, or labels (e.g., "velocity", "kg/m^3"). This improves readability of engineering sheets.
+### Annotation Column for Math Cells
 
-- Click a math cell to reveal the annotation input to its right
-- Type a note — it saves automatically and persists with the sheet
-- Annotations are included in Markdown/DOCX export as `*[annotation]*`
-- Hidden on narrow screens (< 500px) and rendered as plain text when printing
+Math cells have an optional annotation column to the right for units descriptions, notes, or labels (e.g., "velocity", "kg/m^3").
 
-### Files changed
+- Click a math cell to reveal the annotation input
+- Saves automatically and persists with the sheet
+- Included in Markdown/DOCX export as `*[annotation]*`
+- Hidden on narrow screens (< 500px)
+
+### Extreme Value Analysis (EVA) Cell
+
+A new cell type that finds worst-case min/max of an output expression by evaluating all 2^n combinations of input parameter bounds, plus sensitivity analysis.
+
+**Usage:**
+
+1. Define parameters on the sheet (e.g., `V = 10 [V]`, `R = 1000 [Ω]`, `I = V / R =`)
+2. Insert an EVA cell (button 0 in the insert menu, or the Analytics icon)
+3. Set the **Query** field to the expression to evaluate (e.g., `I=`)
+4. Add parameter rows with **Parameter** name, **Min**, and **Max** values
+
+**How it works:**
+
+- Evaluates all 2^n combinations of min/max bounds (max 20 parameters)
+- Shows nominal value plus extreme min and max
+- Sensitivity analysis: varies each parameter while holding others at midpoint, reports percentage contribution (sorted highest to lowest)
+
+---
+
+## Files Added for Packaging
+
+| File | Purpose |
+|------|---------|
+| `launcher.cjs` | Streaming HTTP server + browser launcher (CommonJS, embedded by pkg) |
+| `dist/EngineeringPaper.exe` | Final executable (gitignored) |
+
+---
+
+## Technical Details
+
+### Standalone compile flag
+
+`ROLLUP_STANDALONE=1` sets the `__STANDALONE__` boolean at build time via `@rollup/plugin-replace`. Code guarded by `__STANDALONE__` disables server-dependent features and routes exports through local alternatives.
+
+### Key file changes
 
 | File | Change |
 |------|--------|
-| `src/cells/BaseCell.ts` | Added optional `annotation` field to `DatabaseMathCell` type |
-| `src/cells/MathCell.svelte.ts` | Added `annotation` reactive state, deserialization, and conditional serialization |
-| `src/Cell.svelte` | Added annotation column div with text input and expand/collapse CSS |
-| `src/MathCell.svelte` | Updated `getMarkdown()` to append annotation when present |
-| `launcher.cjs` | Added `Cache-Control: no-store` header to prevent stale file serving |
-
-Backwards compatible — old sheets without annotations load without error. Annotations are only serialized when non-empty.
-
----
-
-## What Is Disabled in Standalone Mode
-
-| Feature | Behavior |
-|---------|----------|
-| Get Shareable Link | Button hidden from toolbar |
-| Example Sheets | Hidden from sidebar |
-| Prebuilt Tables | Hidden from sidebar |
-| Load sheet from URL hash | Falls back to blank sheet |
-| LaTeX export | Hidden from Save dialog |
-| "Create shareable link" checkbox | Hidden from Save dialog |
-
-`.epxyz` file save/load and autosave checkpoints work normally.
+| `package.json` | Added `build:standalone`, `dev:standalone`, `start:standalone`, `package:win` scripts; added `cross-env`, `@rollup/plugin-replace`, `@rollup/plugin-url`, `pandoc-wasm`, `@yao-pkg/pkg` dependencies |
+| `rollup.config.js` | Reads `ROLLUP_STANDALONE` env var; skips `_worker.ts` bundle; injects `__STANDALONE__` boolean; handles `.wasm` files as URL assets |
+| `src/App.svelte` | Guards server features; routes DOCX/PDF export locally; hides server-dependent UI |
+| `src/DownloadDocumentModal.svelte` | Updates export labels; hides LaTeX and shareable link options |
+| `src/docxExport.ts` *(new)* | Wraps `pandoc-wasm` for in-browser DOCX generation |
+| `src/cells/ExtremeValueCell.svelte.ts` *(new)* | EVA cell model |
+| `src/ExtremeValueCell.svelte` *(new)* | EVA cell UI |
+| `public/dimensional_analysis.py` | EVA evaluation and sensitivity analysis |
 
 ---
 
-## What Changes for Export
+## License
 
-| Format | Normal mode | Standalone mode |
-|--------|-------------|-----------------|
-| `.epxyz` | Local file | Local file (unchanged) |
-| Markdown | Local file | Local file (unchanged) |
-| DOCX | Sent to EngineeringPaper.xyz server | Generated locally via `pandoc-wasm` |
-| PDF | Sent to EngineeringPaper.xyz server | Browser print dialog |
-| LaTeX | Sent to EngineeringPaper.xyz server | Hidden (not available) |
-
-DOCX export uses `pandoc-wasm` (the full pandoc engine compiled to WebAssembly, same engine as the server). Equations are converted to native Word OMML format — editable in Microsoft Word, not images. The WASM binary (~58 MB) is loaded on-demand the first time the user exports to DOCX.
-
----
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `package.json` | Added `build:standalone`, `dev:standalone`, `start:standalone` scripts; added `cross-env`, `@rollup/plugin-replace`, `@rollup/plugin-url`, `pandoc-wasm` dependencies |
-| `rollup.config.js` | Reads `ROLLUP_STANDALONE` env var; skips `_worker.ts` bundle when standalone; injects `__STANDALONE__` boolean via `replace` plugin; handles `.wasm` files as URL assets via `url` plugin; uses `npx serve` instead of wrangler in standalone dev mode |
-| `src/App.svelte` | Declares `__STANDALONE__`; guards `uploadSheet()` with early return; falls back to blank sheet for hash URL navigation; routes DOCX export to `docxExport.ts`; routes PDF export to `window.print()`; hides "Get Shareable Link" toolbar button; hides Example Sheets and Prebuilt Tables sidebar menus |
-| `src/DownloadDocumentModal.svelte` | Declares `__STANDALONE__`; updates DOCX/PDF labels for standalone; hides LaTeX radio button; hides "Create a shareable link" checkbox |
-| `src/docxExport.ts` *(new)* | Wraps `pandoc-wasm` `convert()` to generate a `.docx` Blob from markdown input |
-| `src/pandoc-wasm.d.ts` *(new)* | TypeScript type declarations for `pandoc-wasm` |
+See the original [EngineeringPaper.xyz](https://engineeringpaper.xyz) project for license information.
