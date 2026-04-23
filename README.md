@@ -37,6 +37,35 @@ This fork removes all server dependencies. Everything runs locally:
 DOCX export uses `pandoc-wasm` (the full pandoc engine compiled to WebAssembly). Equations are converted to native Word OMML format — editable in Microsoft Word, not images. The WASM binary (~58 MB) loads on-demand the first time you export to DOCX.
 
 ---
+## New Features in This Fork
+
+### Annotation Column for Math Cells
+
+Math cells have an optional annotation column to the right for units descriptions, notes, or labels (e.g., "velocity", "kg/m^3").
+
+- Click a math cell to reveal the annotation input
+- Saves automatically and persists with the sheet
+- Included in Markdown/DOCX export as `*[annotation]*`
+- Hidden on narrow screens (< 500px)
+
+### Extreme Value Analysis (EVA) Cell
+
+A new cell type that finds worst-case min/max of an output expression by evaluating all 2^n combinations of input parameter bounds, plus sensitivity analysis.
+
+**Usage:**
+
+1. Define parameters on the sheet (e.g., `V = 10 [V]`, `R = 1000 [Ω]`, `I = V / R =`)
+2. Insert an EVA cell (button 0 in the insert menu, or the Analytics icon)
+3. Set the **Query** field to the expression to evaluate (e.g., `I=`)
+4. Add parameter rows with **Parameter** name, **Min**, and **Max** values
+
+**How it works:**
+
+- Evaluates all 2^n combinations of min/max bounds (max 20 parameters)
+- Shows nominal value plus extreme min and max
+- Sensitivity analysis: varies each parameter while holding others at midpoint, reports percentage contribution (sorted highest to lowest)
+  
+---
 
 ## How to Build and Run
 
@@ -156,36 +185,6 @@ taskkill /PID <pid> /F
 ```
 
 Then relaunch the exe.
-
----
-
-## New Features in This Fork
-
-### Annotation Column for Math Cells
-
-Math cells have an optional annotation column to the right for units descriptions, notes, or labels (e.g., "velocity", "kg/m^3").
-
-- Click a math cell to reveal the annotation input
-- Saves automatically and persists with the sheet
-- Included in Markdown/DOCX export as `*[annotation]*`
-- Hidden on narrow screens (< 500px)
-
-### Extreme Value Analysis (EVA) Cell
-
-A new cell type that finds worst-case min/max of an output expression by evaluating all 2^n combinations of input parameter bounds, plus sensitivity analysis.
-
-**Usage:**
-
-1. Define parameters on the sheet (e.g., `V = 10 [V]`, `R = 1000 [Ω]`, `I = V / R =`)
-2. Insert an EVA cell (button 0 in the insert menu, or the Analytics icon)
-3. Set the **Query** field to the expression to evaluate (e.g., `I=`)
-4. Add parameter rows with **Parameter** name, **Min**, and **Max** values
-
-**How it works:**
-
-- Evaluates all 2^n combinations of min/max bounds (max 20 parameters)
-- Shows nominal value plus extreme min and max
-- Sensitivity analysis: varies each parameter while holding others at midpoint, reports percentage contribution (sorted highest to lowest)
 
 ---
 
