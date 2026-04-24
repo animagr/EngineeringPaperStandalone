@@ -144,6 +144,14 @@ npm run build:standalone
 npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper --debug
 ```
 
+### Clean up after build
+
+Remove build artifacts but keep the exe:
+
+```bash
+rm -rf public node_modules
+```
+
 ### Run
 
 Double-click `dist/EngineeringPaper.exe`, or from a terminal:
