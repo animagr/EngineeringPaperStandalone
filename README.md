@@ -64,6 +64,10 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 - Evaluates all 2^n combinations of min/max bounds (max 20 parameters)
 - Shows nominal value plus extreme min and max
 - Sensitivity analysis: varies each parameter while holding others at midpoint, reports percentage contribution (sorted highest to lowest)
+
+**Examples:**
+
+See Example.epxyz and Example.docx for the new feature and word export cap
   
 ---
 
