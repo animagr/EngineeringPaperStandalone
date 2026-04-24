@@ -11,7 +11,7 @@
     "build:standalone": "cross-env ROLLUP_STANDALONE=1 rollup -c",
     "dev:standalone": "cross-env ROLLUP_STANDALONE=1 rollup -c -w",
     "start:standalone": "npx serve public -l 8788 --single",
-    "package:win": "npm run build:standalone && echo chrome > dist/browser.txt && npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper"
+    "package:win": "npm run build:standalone && mkdir -p dist && echo chrome > dist/browser.txt && npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20221111.1",

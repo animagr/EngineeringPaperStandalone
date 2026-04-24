@@ -101,6 +101,8 @@ npm run build:standalone
 
 Output goes to `public/`.
 
+Note: Warnings are expected during build, safe to ignore. Inherited from source.
+
 ### Serve locally
 
 ```bash
@@ -108,20 +110,6 @@ npm run start:standalone
 ```
 
 Opens at **http://localhost:8788**
-
-### Combined build + serve
-
-```bash
-npm run build:standalone && npm run start:standalone
-```
-
-### Live-reload dev mode
-
-```bash
-npm run dev:standalone
-```
-
-Watches for file changes and rebuilds automatically.
 
 ---
 
@@ -135,7 +123,7 @@ Produces a single `EngineeringPaper.exe` (~330 MB) with Node.js and all assets e
 npm run package:win
 ```
 
-This runs `build:standalone` first, then packages everything into `dist/EngineeringPaper.exe`.
+Runs `npm run build:standalone` first; packages everything into `dist/EngineeringPaper.exe`.
 
 ### Build with verbose output
 
