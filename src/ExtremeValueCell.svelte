@@ -119,8 +119,8 @@
       if (evaResult.error) {
         md += `Error: ${evaResult.error}\n\n`;
       } else {
-        md += `Min: ${startDelimiter}${formatResultValue(evaResult.minResult)} ${evaResult.minResult.unitsLatex}${endDelimiter}\n\n`;
-        md += `Max: ${startDelimiter}${formatResultValue(evaResult.maxResult)} ${evaResult.maxResult.unitsLatex}${endDelimiter}\n\n`;
+        md += `Min: ${formatResultValue(evaResult.minResult)}${evaResult.minResult.unitsLatex ? ' ' + evaResult.minResult.unitsLatex : ''}\n\n`;
+        md += `Max: ${formatResultValue(evaResult.maxResult)}${evaResult.maxResult.unitsLatex ? ' ' + evaResult.maxResult.unitsLatex : ''}\n\n`;
         if (evaResult.sensitivity && evaResult.sensitivity.length > 0) {
           md += `**Sensitivity:**\n`;
           for (const entry of evaResult.sensitivity) {

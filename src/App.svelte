@@ -2581,7 +2581,7 @@ Please include a link to this sheet in the email to assist in debugging the prob
 >
   <Header
     bind:isSideNavOpen={sideNavOpen}
-    persistentHamburgerMenu={!inIframe}
+    persistentHamburgerMenu={!inIframe && !__STANDALONE__}
   >
     <span 
       class="logo" 
@@ -2693,7 +2693,7 @@ Please include a link to this sheet in the email to assist in debugging the prob
   </Header>
 
 
-  {#if !inIframe}
+  {#if !inIframe && !__STANDALONE__}
     <SideNav
       bind:isOpen={sideNavOpen}
       on:open={retrieveRecentSheets}

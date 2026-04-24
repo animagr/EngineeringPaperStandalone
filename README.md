@@ -71,6 +71,20 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 
 ### One-time setup
 
+**Prerequisites:**
+- [Node.js](https://nodejs.org/)
+- [Git for Windows](https://gitforwindows.org/) (includes Git Bash, required for building dependencies)
+
+After installing Node.js, close and reopen your terminal, then verify it's in your PATH:
+
+```bash
+node --version
+```
+
+If this prints a version number, you're ready. If not, add Node.js to your PATH manually or reinstall with the "Add to PATH" option checked.
+
+**Windows users:** Run `npm install` from **Git Bash**, not PowerShell or cmd. Some dependencies require bash to build.
+
 ```bash
 npm install
 ```
@@ -118,13 +132,6 @@ npm run package:win
 ```
 
 This runs `build:standalone` first, then packages everything into `dist/EngineeringPaper.exe`.
-
-### Build steps separately (for debugging)
-
-```bash
-npm run build:standalone
-npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dist/EngineeringPaper
-```
 
 ### Build with verbose output
 
