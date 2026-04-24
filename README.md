@@ -239,4 +239,6 @@ Then relaunch the exe.
 
 ## License
 
+MIT license, same as original.
+
 See the original [EngineeringPaper.xyz](https://engineeringpaper.xyz) project for license information.
