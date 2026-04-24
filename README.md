@@ -149,7 +149,7 @@ npx pkg launcher.cjs --config package.json --targets node20-win-x64 --output dis
 Remove build artifacts but keep the exe:
 
 ```bash
-rm -rf public node_modules
+rm -rf public/build public/fonts node_modules
 ```
 
 ### Run
