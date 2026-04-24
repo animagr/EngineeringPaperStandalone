@@ -67,7 +67,7 @@ A new cell type that finds worst-case min/max of an output expression by evaluat
 
 **Examples:**
 
-See Example.epxyz and Example.docx for the new feature and word export cap
+See Example.epxyz and Example.docx for the new features and word export.
   
 ---
 
