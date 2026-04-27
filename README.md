@@ -4,7 +4,7 @@ A standalone build of [EngineeringPaper.xyz](https://engineeringpaper.xyz) that 
 
 This fork is going to continue to get updates to add features targeted for an analog circuit designer. Circuit WCA analysis, part stress analysis, etc.
 
-> **Fork notice:** This is a fork of the original EngineeringPaper.xyz, based on version **20260313**. The upstream project is hosted at [engineeringpaper.xyz](https://engineeringpaper.xyz).
+> **Fork notice:** This is a fork of the original EngineeringPaper.xyz, based on version **20260313**. The upstream project is hosted at [EngineeringPaper](https://github.com/mgreminger/EngineeringPaper.xyz).
 
 ---
 
@@ -268,4 +268,4 @@ Then relaunch the exe.
 
 MIT license, same as original.
 
-See the original [EngineeringPaper.xyz](https://github.com/mgreminger/EngineeringPaper.xyz) project for license information.
+See the original [EngineeringPaper](https://github.com/mgreminger/EngineeringPaper.xyz) project for license information.
