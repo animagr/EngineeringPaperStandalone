@@ -344,10 +344,26 @@
       </button>
 
       <button
-        id={"insert-popup-button-minus"}
-        onclick={dispatchInsertSheet}
+        id={"insert-popup-button-rss"}
+        onclick={() => insertNewCell('rss')}
         bind:this={buttonArray[10]}
         onkeydown={(e) => handleKeyboard(e, 10)}
+      >
+        <div class="button-text">
+          {#if !appState.onMobile}
+            <div>RSS Analysis Cell</div>
+          {:else}
+            <div>RSS Cell</div>
+          {/if}
+          <div><Analytics size={20}/></div>
+        </div>
+      </button>
+
+      <button
+        id={"insert-popup-button-minus"}
+        onclick={dispatchInsertSheet}
+        bind:this={buttonArray[11]}
+        onkeydown={(e) => handleKeyboard(e, 11)}
       >
         <div class="button-text">
           {#if !appState.onMobile}
@@ -361,8 +377,8 @@
       <button
         id={"insert-popup-button-esc"}
         onclick={deleteMyself}
-        bind:this={buttonArray[11]}
-        onkeydown={(e) => handleKeyboard(e, 11)}
+        bind:this={buttonArray[12]}
+        onkeydown={(e) => handleKeyboard(e, 12)}
       >
         <div class="button-text">
           {#if !appState.onMobile}

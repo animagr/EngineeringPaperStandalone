@@ -12,6 +12,7 @@
   import FluidCell from "./cells/FluidCell.svelte";
   import CodeCell from "./cells/CodeCell.svelte";
   import ExtremeValueCell from "./cells/ExtremeValueCell.svelte";
+  import RssCell from "./cells/RssCell.svelte";
   import appState from "./stores.svelte";
   import { deleteCell, addCell, incrementActiveCell, decrementActiveCell,
            resetSheet, getSheetJson, getSheetObject, clearResults } from "./stores.svelte";
@@ -21,7 +22,7 @@
   import type { FluidFunction } from "./cells/FluidCell.svelte";
   import type { CodeCellFunction } from "./cells/CodeCell.svelte";
   import { isVisible, versionToDateString, debounce, saveFileBlob, sleep, createCustomUnits } from "./utility";
-  import type { ModalInfo, RecentSheets, RecentSheetUrl, RecentSheetFile, StatementsAndSystems, ExtremeValueDefinition } from "./types";
+  import type { ModalInfo, RecentSheets, RecentSheetUrl, RecentSheetFile, StatementsAndSystems, ExtremeValueDefinition, RssDefinition } from "./types";
   import type { Results } from "./resultTypes";
   import { getHash, API_GET_PATH, API_SAVE_PATH } from "./database/utility";
   import type { SheetPostBody, History } from "./database/types";
@@ -861,6 +862,7 @@
     const codeCellFunctions: CodeCellFunction[] = [];
     const interpolationFunctions: (InterpolationFunction | GridInterpolationFunction)[] = [];
     const extremeValueDefinitions: ExtremeValueDefinition[] = [];
+    const rssDefinitions: RssDefinition[] = [];
     let queryCounter = 0;
 
     for (const [cellNum, cell] of appState.cells.entries()) {
@@ -982,6 +984,40 @@
           // need a placeholder so result distribution counter stays aligned
           statements.push(getBlankStatement());
         }
+      } else if (cell instanceof RssCell) {
+        if (cell.queryField.statement && cell.queryField.statement.type === "query") {
+          statements.push(cell.queryField.statement);
+
+          const rssParams = [];
+          for (let i = 0; i < cell.parameterFields.length; i++) {
+            const paramStatement = cell.parameterFields[i].statement;
+            const minCombined = cell.combinedMinFields[i];
+            const nominalCombined = cell.combinedNominalFields[i];
+            const maxCombined = cell.combinedMaxFields[i];
+            if (paramStatement && paramStatement.type === "parameter" &&
+                minCombined.statement && minCombined.statement.type === "assignment" &&
+                nominalCombined.statement && nominalCombined.statement.type === "assignment" &&
+                maxCombined.statement && maxCombined.statement.type === "assignment") {
+              rssParams.push({
+                name: paramStatement.name,
+                minSympy: minCombined.statement.sympy,
+                minImplicitParams: minCombined.statement.implicitParams,
+                nominalSympy: nominalCombined.statement.sympy,
+                nominalImplicitParams: nominalCombined.statement.implicitParams,
+                maxSympy: maxCombined.statement.sympy,
+                maxImplicitParams: maxCombined.statement.implicitParams,
+              });
+            }
+          }
+          if (rssParams.length > 0) {
+            rssDefinitions.push({
+              parameters: rssParams,
+              queryIndex: statements.length - 1,
+            });
+          }
+        } else {
+          statements.push(getBlankStatement());
+        }
       }
     }
 
@@ -1000,7 +1036,8 @@
       customBaseUnits: appState.config.customBaseUnits,
       simplifySymbolicExpressions: appState.config.simplifySymbolicExpressions,
       convertFloatsToFractions: appState.config.convertFloatsToFractions,
-      extremeValueDefinitions: extremeValueDefinitions.length > 0 ? extremeValueDefinitions : undefined
+      extremeValueDefinitions: extremeValueDefinitions.length > 0 ? extremeValueDefinitions : undefined,
+      rssDefinitions: rssDefinitions.length > 0 ? rssDefinitions : undefined
     };
   }
 
@@ -1035,6 +1072,12 @@
       return accum || cell.queryField.parsingError ||
                      cell.parameterFields.some(value => value.parsingError) ||
                      cell.minFields.some(value => value.parsingError) ||
+                     cell.maxFields.some(value => value.parsingError);
+    } else if (cell instanceof RssCell) {
+      return accum || cell.queryField.parsingError ||
+                     cell.parameterFields.some(value => value.parsingError) ||
+                     cell.minFields.some(value => value.parsingError) ||
+                     cell.nominalFields.some(value => value.parsingError) ||
                      cell.maxFields.some(value => value.parsingError);
     } else {
       return accum || false;
@@ -1092,7 +1135,7 @@
         if (!data.error && data.results.length > 0) {
           let counter = 0;
           for (const [i, cell] of appState.cells.entries()) {
-            if ((cell.type === "math" || cell.type === "plot" || cell.type === "dataTable" || cell.type === "extremeValue") ) {
+            if ((cell.type === "math" || cell.type === "plot" || cell.type === "dataTable" || cell.type === "extremeValue" || cell.type === "rss") ) {
               appState.results[i] = data.results[counter++];
             } else {
               appState.results[i] = null;

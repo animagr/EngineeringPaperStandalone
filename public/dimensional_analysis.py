@@ -538,6 +538,19 @@ class ExtremeValueDefinition(TypedDict):
     parameters: list[ExtremeValueParameter]
     queryIndex: int
 
+class RssParameter(TypedDict):
+    name: str
+    minSympy: str
+    minImplicitParams: list[ImplicitParameter]
+    nominalSympy: str
+    nominalImplicitParams: list[ImplicitParameter]
+    maxSympy: str
+    maxImplicitParams: list[ImplicitParameter]
+
+class RssDefinition(TypedDict):
+    parameters: list[RssParameter]
+    queryIndex: int
+
 class StatementsAndSystems(TypedDict):
     statements: list[InputStatement]
     systemDefinitions: list[SystemDefinition]
@@ -548,6 +561,7 @@ class StatementsAndSystems(TypedDict):
     simplifySymbolicExpressions: bool
     convertFloatsToFractions: bool
     extremeValueDefinitions: NotRequired[list[ExtremeValueDefinition]]
+    rssDefinitions: NotRequired[list[RssDefinition]]
 
 def is_code_function_query_statement(statement: InputAndSystemStatement) -> TypeGuard[CodeFunctionQueryStatement]:
     return statement.get("isCodeFunctionQuery", False)
@@ -673,6 +687,20 @@ class ExtremeValueResult(TypedDict):
     minResult: Result | FiniteImagResult
     maxResult: Result | FiniteImagResult
     sensitivity: NotRequired[list[SensitivityEntry]]
+    error: NotRequired[str]
+
+class RssSensitivityEntry(TypedDict):
+    paramName: str
+    delta: float
+    varianceContribution: float
+
+class RssResult(TypedDict):
+    rssResult: Literal[True]
+    nominalResult: Result | FiniteImagResult
+    minResult: Result | FiniteImagResult
+    maxResult: Result | FiniteImagResult
+    rssTotal: float
+    sensitivity: NotRequired[list[RssSensitivityEntry]]
     error: NotRequired[str]
 
 class Results(TypedDict):
@@ -3661,7 +3689,8 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
                         placeholder_set: set[Function],
                         placeholder_dummy_set: set[Function],
                         custom_definition_names: list[str],
-                        extreme_value_definitions: list[ExtremeValueDefinition] | None = None) -> tuple[list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult], dict[int,bool]]:
+                        extreme_value_definitions: list[ExtremeValueDefinition] | None = None,
+                        rss_definitions: list[RssDefinition] | None = None) -> tuple[list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult | RssResult], dict[int,bool]]:
     num_statements = len(statements)
 
     if num_statements == 0:
@@ -4197,6 +4226,251 @@ def evaluate_statements(statements: list[InputAndSystemStatement],
                     error="Could not determine numeric min/max from parameter combinations"
                 )
 
+    if rss_definitions:
+        for rss_def in rss_definitions:
+            query_index = rss_def["queryIndex"]
+            rss_params = rss_def["parameters"]
+
+            if len(rss_params) == 0:
+                continue
+
+            rss_param_names = set(rp["name"] for rp in rss_params)
+
+            query_stmt = None
+            query_stmt_index = None
+            for si, stmt in enumerate(expanded_statements):
+                if stmt.get("index") == query_index and stmt.get("type") == "query":
+                    query_stmt = stmt
+                    query_stmt_index = si
+                    break
+
+            if query_stmt is None:
+                continue
+
+            query_expression = query_stmt["expression"]
+            for sub_stmt in reversed(expanded_statements[0:query_stmt_index]):
+                if sub_stmt["type"] == "assignment" and not sub_stmt.get("isFunction", False):
+                    sub_name = sub_stmt["name"]
+                    if sub_name in rss_param_names:
+                        continue
+                    if sub_name in map(lambda x: str(x), query_expression.free_symbols):
+                        query_expression = subs_wrapper(query_expression, {symbols(sub_name): sub_stmt["expression"]})
+                elif sub_stmt["type"] == "local_sub":
+                    pass
+
+            query_expression = cast(Expr, query_expression.doit())
+
+            nominal_result = results_with_ranges[query_index]
+
+            param_overrides: list[tuple[Symbol, Expr, Expr, Expr]] = []
+            rss_error = None
+
+            for rss_param in rss_params:
+                param_name = rss_param["name"]
+
+                found = False
+                for stmt in expanded_statements:
+                    if stmt.get("type") == "assignment" and stmt.get("name") == param_name:
+                        found = True
+                        break
+
+                if not found:
+                    rss_error = f"Parameter '{param_name}' not found as an assignment on the sheet"
+                    break
+
+                override_symbol = symbols(param_name)
+
+                try:
+                    min_ip_subs = {}
+                    for ip in rss_param["minImplicitParams"]:
+                        if ip["si_value"] is not None:
+                            min_ip_subs[symbols(ip["name"])] = sympify(ip["si_value"], rational=convert_floats_to_fractions)
+
+                    nominal_ip_subs = {}
+                    for ip in rss_param["nominalImplicitParams"]:
+                        if ip["si_value"] is not None:
+                            nominal_ip_subs[symbols(ip["name"])] = sympify(ip["si_value"], rational=convert_floats_to_fractions)
+
+                    max_ip_subs = {}
+                    for ip in rss_param["maxImplicitParams"]:
+                        if ip["si_value"] is not None:
+                            max_ip_subs[symbols(ip["name"])] = sympify(ip["si_value"], rational=convert_floats_to_fractions)
+
+                    min_si = sympify(rss_param["minSympy"], rational=convert_floats_to_fractions).subs(min_ip_subs)
+                    nominal_si = sympify(rss_param["nominalSympy"], rational=convert_floats_to_fractions).subs(nominal_ip_subs)
+                    max_si = sympify(rss_param["maxSympy"], rational=convert_floats_to_fractions).subs(max_ip_subs)
+
+                    if min_si.free_symbols or nominal_si.free_symbols or max_si.free_symbols:
+                        rss_error = f"Could not resolve min/nominal/max values for parameter '{param_name}'"
+                        break
+
+                    param_overrides.append((override_symbol, min_si, nominal_si, max_si))
+                except Exception as e:
+                    rss_error = f"Error processing parameter '{param_name}': {e}"
+                    break
+
+            if rss_error:
+                results_with_ranges[query_index] = RssResult(
+                    rssResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                    minResult=cast(Result | FiniteImagResult, nominal_result),
+                    maxResult=cast(Result | FiniteImagResult, nominal_result),
+                    rssTotal=0.0,
+                    error=rss_error
+                )
+                continue
+
+            rss_dim_subs = dict(dimensional_analysis_subs)
+            for override_sym, _, _, _ in param_overrides:
+                if override_sym not in rss_dim_subs:
+                    param_name_str = str(override_sym)
+                    dim_expr = S(1)
+                    for stmt in expanded_statements:
+                        if stmt.get("type") == "assignment" and stmt.get("name") == param_name_str:
+                            if "dim_expression" in stmt and stmt["dim_expression"] is not None:
+                                dim_expr = stmt["dim_expression"]
+                            break
+                    rss_dim_subs[override_sym] = dim_expr
+
+            # Evaluate at all-nominal
+            nominal_subs = dict(parameter_subs)
+            for sym, _, nom_val, _ in param_overrides:
+                nominal_subs[sym] = nom_val
+
+            try:
+                nominal_eval, nominal_sym, nominal_dim, nominal_dim_error = get_evaluated_expression(
+                    query_expression, not convert_floats_to_fractions,
+                    nominal_subs, rss_dim_subs, placeholder_map, placeholder_set,
+                    {}, variable_name_map
+                )
+
+                if is_matrix(nominal_eval):
+                    results_with_ranges[query_index] = RssResult(
+                        rssResult=True,
+                        nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                        minResult=cast(Result | FiniteImagResult, nominal_result),
+                        maxResult=cast(Result | FiniteImagResult, nominal_result),
+                        rssTotal=0.0,
+                        error="RSS analysis does not support matrix results"
+                    )
+                    continue
+
+                nominal_result_obj = get_result(
+                    nominal_eval, nominal_dim,
+                    simplify_symbolic_expressions,
+                    nominal_dim_error, cast(Expr, nominal_sym),
+                    False, custom_base_units, False, "", variable_name_map
+                )
+
+                if not (nominal_result_obj.get("numeric", False) and nominal_result_obj.get("finite", False)):
+                    results_with_ranges[query_index] = RssResult(
+                        rssResult=True,
+                        nominalResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                        minResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                        maxResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                        rssTotal=0.0,
+                        error="Nominal evaluation did not produce a finite numeric result"
+                    )
+                    continue
+
+                nominal_numeric = float(nominal_result_obj["value"])
+            except Exception as e:
+                results_with_ranges[query_index] = RssResult(
+                    rssResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result),
+                    minResult=cast(Result | FiniteImagResult, nominal_result),
+                    maxResult=cast(Result | FiniteImagResult, nominal_result),
+                    rssTotal=0.0,
+                    error=f"Error evaluating nominal: {e}"
+                )
+                continue
+
+            # For each parameter, compute delta_i
+            deltas: list[tuple[str, float, float]] = []  # (name, delta_i, abs_delta)
+            rss_eval_error = None
+
+            for i, (sym, min_val, nom_val, max_val) in enumerate(param_overrides):
+                trial_subs_min = dict(nominal_subs)
+                trial_subs_min[sym] = min_val
+                try:
+                    eval_at_min, _, _, _ = get_evaluated_expression(
+                        query_expression, not convert_floats_to_fractions,
+                        trial_subs_min, rss_dim_subs, placeholder_map, placeholder_set,
+                        {}, variable_name_map
+                    )
+                    val_at_min = float(eval_at_min.evalf(PRECISION)) if not is_matrix(eval_at_min) else None
+                except:
+                    val_at_min = None
+
+                trial_subs_max = dict(nominal_subs)
+                trial_subs_max[sym] = max_val
+                try:
+                    eval_at_max, _, _, _ = get_evaluated_expression(
+                        query_expression, not convert_floats_to_fractions,
+                        trial_subs_max, rss_dim_subs, placeholder_map, placeholder_set,
+                        {}, variable_name_map
+                    )
+                    val_at_max = float(eval_at_max.evalf(PRECISION)) if not is_matrix(eval_at_max) else None
+                except:
+                    val_at_max = None
+
+                if val_at_min is None or val_at_max is None:
+                    rss_eval_error = f"Could not evaluate query for parameter '{sym}'"
+                    break
+
+                delta_from_min = abs(val_at_min - nominal_numeric)
+                delta_from_max = abs(val_at_max - nominal_numeric)
+                delta_i = max(delta_from_min, delta_from_max)
+                abs_delta = abs(val_at_max - val_at_min)
+                deltas.append((str(sym), delta_i, abs_delta))
+
+            if rss_eval_error:
+                results_with_ranges[query_index] = RssResult(
+                    rssResult=True,
+                    nominalResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                    minResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                    maxResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                    rssTotal=0.0,
+                    error=rss_eval_error
+                )
+                continue
+
+            # Compute RSS total
+            sum_of_squares = sum(d_i**2 for _, d_i, _ in deltas)
+            rss_total = float(sum_of_squares**0.5)
+
+            rss_min_value = nominal_numeric - rss_total
+            rss_max_value = nominal_numeric + rss_total
+
+            # Build min/max Result dicts by cloning nominal and overriding value
+            min_result_obj = dict(nominal_result_obj)
+            min_result_obj["value"] = str(rss_min_value)
+            min_result_obj["symbolicValue"] = str(rss_min_value)
+
+            max_result_obj = dict(nominal_result_obj)
+            max_result_obj["value"] = str(rss_max_value)
+            max_result_obj["symbolicValue"] = str(rss_max_value)
+
+            # Build sensitivity
+            sensitivity_list: list[RssSensitivityEntry] = []
+            for name, delta_i, abs_delta in deltas:
+                variance_pct = (delta_i**2 / sum_of_squares * 100) if sum_of_squares > 0 else 0.0
+                sensitivity_list.append(RssSensitivityEntry(
+                    paramName=name,
+                    delta=abs_delta,
+                    varianceContribution=variance_pct
+                ))
+            sensitivity_list.sort(key=lambda e: e["varianceContribution"], reverse=True)
+
+            results_with_ranges[query_index] = RssResult(
+                rssResult=True,
+                nominalResult=cast(Result | FiniteImagResult, nominal_result_obj),
+                minResult=cast(Result | FiniteImagResult, min_result_obj),
+                maxResult=cast(Result | FiniteImagResult, max_result_obj),
+                rssTotal=rss_total,
+                sensitivity=sensitivity_list
+            )
+
     return combine_plot_and_table_data_results(results_with_ranges[:num_statements], statement_plot_info, statement_data_table_info), numerical_system_cell_unit_errors
 
 
@@ -4208,10 +4482,11 @@ def get_query_values(statements: list[InputAndSystemStatement],
                      placeholder_set: set[Function],
                      placeholder_dummy_set: set[Function],
                      custom_definition_names: list[str],
-                     extreme_value_definitions: list[ExtremeValueDefinition] | None = None):
+                     extreme_value_definitions: list[ExtremeValueDefinition] | None = None,
+                     rss_definitions: list[RssDefinition] | None = None):
     error: None | str = None
 
-    results: list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult] = []
+    results: list[Result | FiniteImagResult | list[PlotResult] | MatrixResult | DataTableResult | RenderResult | ExtremeValueResult | RssResult] = []
     numerical_system_cell_errors: dict[int, bool] = {}
     try:
         results, numerical_system_cell_errors = evaluate_statements(statements,
@@ -4222,7 +4497,8 @@ def get_query_values(statements: list[InputAndSystemStatement],
                                                                     placeholder_set,
                                                                     placeholder_dummy_set,
                                                                     custom_definition_names,
-                                                                    extreme_value_definitions)
+                                                                    extreme_value_definitions,
+                                                                    rss_definitions)
     except DuplicateAssignment as e:
         error = f"Duplicate assignment of variable {e}"
     except ReferenceCycle as e:
@@ -4391,6 +4667,7 @@ def solve_sheet(statements_and_systems) -> str:
     simplify_symbolic_expressions = statements_and_systems["simplifySymbolicExpressions"]
     convert_floats_to_fractions = statements_and_systems["convertFloatsToFractions"]
     extreme_value_definitions: list[ExtremeValueDefinition] = statements_and_systems.get("extremeValueDefinitions", [])
+    rss_definitions: list[RssDefinition] = statements_and_systems.get("rssDefinitions", [])
 
     code_cell_result_store: dict[str, CodeCellResultCollector] = {}
 
@@ -4480,7 +4757,8 @@ def solve_sheet(statements_and_systems) -> str:
                                                                     placeholder_set,
                                                                     placeholder_dummy_set,
                                                                     custom_definition_names,
-                                                                    extreme_value_definitions)
+                                                                    extreme_value_definitions,
+                                                                    rss_definitions)
 
     # If there was a numerical solve, check to make sure there were not unit mismatches
     # between the lhs and rhs of each equality in the system

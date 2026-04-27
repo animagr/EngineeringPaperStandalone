@@ -209,6 +209,15 @@
     </IconButton>
 
     <IconButton
+      title="Insert RSS Analysis Cell Here"
+      click={() => addCellWrapper('rss', index)}
+      id={last ? "add-rss-cell" : `add-rss-cell-${index}`}
+      noTouch={!last}
+    >
+      <Analytics />
+    </IconButton>
+
+    <IconButton
       title="Insert Sheet Here"
       click={() => dispatchInsertSheet(index)}
       id={last ? "insert-sheet" : null}

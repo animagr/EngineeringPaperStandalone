@@ -139,13 +139,33 @@ export type ExtremeValueResult = {
   error?: string;
 };
 
-export function isExtremeValueResult(result: Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult): result is ExtremeValueResult {
+export function isExtremeValueResult(result: Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult | RssResult): result is ExtremeValueResult {
   return "extremeValueResult" in result && result.extremeValueResult;
+}
+
+export type RssSensitivityEntry = {
+  paramName: string;
+  delta: number;
+  varianceContribution: number;
+};
+
+export type RssResult = {
+  rssResult: true;
+  nominalResult: Result | FiniteImagResult;
+  minResult: Result | FiniteImagResult;
+  maxResult: Result | FiniteImagResult;
+  rssTotal: number;
+  sensitivity?: RssSensitivityEntry[];
+  error?: string;
+};
+
+export function isRssResult(result: Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult | RssResult): result is RssResult {
+  return "rssResult" in result && result.rssResult;
 }
 
 export type Results = {
   error: null | string;
-  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult)[];
+  results: (Result | FiniteImagResult | MatrixResult | DataTableResult | RenderResult | PlotResult[] | ExtremeValueResult | RssResult)[];
   systemResults: SystemResult[];
   codeCellResults: Record<string, CodeCellResult>;
 };

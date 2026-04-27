@@ -29,6 +29,8 @@
   import CodeCell from "./cells/CodeCell.svelte";
   import ExtremeValueCell from "./cells/ExtremeValueCell.svelte";
   import ExtremeValueCellElement from "./ExtremeValueCell.svelte";
+  import RssCell from "./cells/RssCell.svelte";
+  import RssCellElement from "./RssCell.svelte";
 
   import TrashCan from "carbon-icons-svelte/lib/TrashCan.svelte";
   import ChevronUp from "carbon-icons-svelte/lib/ChevronUp.svelte";
@@ -403,6 +405,16 @@
         bind:this={cellElement}
         index={index}
         extremeValueCell={cell}
+      />
+    {:else if cell instanceof RssCell}
+      <RssCellElement
+        {insertMathCellAfter}
+        {insertInsertCellAfter}
+        {mathCellChanged}
+        {triggerSaveNeeded}
+        bind:this={cellElement}
+        index={index}
+        rssCell={cell}
       />
     {:else if cell instanceof DeletedCell}
       <DeletedCellElement

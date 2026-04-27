@@ -55,6 +55,21 @@ export type ExtremeValueDefinition = {
   queryIndex: number;
 };
 
+export type RssParameter = {
+  name: string;
+  minSympy: string;
+  minImplicitParams: ImplicitParameter[];
+  nominalSympy: string;
+  nominalImplicitParams: ImplicitParameter[];
+  maxSympy: string;
+  maxImplicitParams: ImplicitParameter[];
+};
+
+export type RssDefinition = {
+  parameters: RssParameter[];
+  queryIndex: number;
+};
+
 export type StatementsAndSystems = {
   statements: (Statement | SubQueryStatement)[];
   systemDefinitions: SystemDefinition[];
@@ -65,6 +80,7 @@ export type StatementsAndSystems = {
   simplifySymbolicExpressions: boolean;
   convertFloatsToFractions: boolean;
   extremeValueDefinitions?: ExtremeValueDefinition[];
+  rssDefinitions?: RssDefinition[];
 }
 
 
