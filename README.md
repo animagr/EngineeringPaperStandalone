@@ -4,8 +4,6 @@
 
 A standalone build of [EngineeringPaper.xyz](https://engineeringpaper.xyz) that runs entirely in the browser with no server required, and also includes a new Annotation/Note field for the Math cell, and EVA/RSS analysis cells aimed for circuit designers.
 
-This fork is going to continue to get updates to add features targeted for an analog circuit designer. Circuit WCA analysis, part stress analysis, etc.
-
 > **Fork notice:** This is a fork of the original EngineeringPaper.xyz, based on version **20260313**. The upstream project is hosted at [EngineeringPaper](https://github.com/mgreminger/EngineeringPaper.xyz).
 
 ---
