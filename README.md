@@ -1,3 +1,5 @@
+# **⚠️ Project no longer maintained, see [EngineeringPapyr](https://github.com/animagr/EngineeringPapyr) instead!!!**
+
 # EngineeringPaper.xyz — Standalone Edition
 
 A standalone build of [EngineeringPaper.xyz](https://engineeringpaper.xyz) that runs entirely in the browser with no server required, and also includes a new Annotation/Note field for the Math cell, and EVA/RSS analysis cells aimed for circuit designers.
